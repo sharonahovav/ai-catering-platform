@@ -26,6 +26,41 @@ Format: **Question** · *Why it matters* · **Blocks**
 | 19 | Delivery zone definition | Zones by city list, postal code, or radius/polygon? | Address → zone lookup method | Phase 2 delivery zones |
 | 20 | Brand | Business name, logo, colors, fonts | Visual identity | Phase 3 UI polish (neutral tokens until then) |
 
+### Added by the Infinite Table handoff review (2026-10-31, proposed; see `INFINITE_TABLE_GATE0.md`)
+
+| # | Topic | Question | Why it matters | Blocks |
+|---|---|---|---|---|
+| 21 | Final visual identity | Three directions exist: Infinite Table tokens (warm editorial paper, handoff), the `design/green-eggs-and-ham` illustrated/mascot identity, and the current forest-green placeholder in `base.css`. Which one is the brand? | Determines tokens, fonts, imagery for every screen | Phase 3 UI polish; `/table/` uses handoff tokens in an isolated stylesheet meanwhile |
+| 22 | Fate of the stepper UI (`/customer/`) | Is the Infinite Table the only customer UI (stepper retired), or do both ship? | Avoids maintaining two customer flows | Not blocking Gate 1 (both coexist) |
+| 23 | Hebrew display typeface | Georgia (handoff display font) has no Hebrew glyphs. Which Hebrew display/editorial face, and is its licence cleared? Heebo (self-hosted) is the placeholder | Editorial look in RTL; font licensing | Brand (#20); Gate 1 uses Heebo |
+| 24 | Imagery provenance and licence | Prototype v2 PNGs are described as AI-generated placeholders. May any be reused? Real dish photography plan? | Legal/brand risk; factual mismatch with real dishes | Any deployment beyond local review |
+| 25 | Category set and overview composition | Final category names/count (prototype has 4, repo mock has 6) and whether the overview is curated per category or generic slots | Spatial layout, imagery per category | Gate 3 catalog; Gate 1 supports up to 6 slots |
+| 26 | Money representation on the wire | Integer minor units + currency + explicit `unavailable` state (handoff) vs decimal strings (current `API_CONTRACTS.md`) | Contract and pricing tests | Gate 4 pricing; currency itself is #17 |
+| 27 | Voice AI | Handoff B19 / PRD "unresolved": any voice interaction? | Scope and accessibility | Out of scope until decided |
+
+### Handoff ID mapping (Infinite Table `06_OPEN_DECISIONS.md` → this register)
+
+| Handoff | Maps to | Note |
+|---|---|---|
+| B01 name/logo, B03 colors/typefaces | #20, #21, #23 | |
+| B02 languages/RTL | **Decided #12** (Hebrew only, RTL) | **Conflict:** the handoff lists it as open and ships English/LTR samples. Assumed the repo decision is binding; pending owner confirmation (Gate 0 Q1). |
+| B04 customer auth | #1 | |
+| B05 catalog and photos | #24, #25 | |
+| B06 serving formulas/increments | #3 | |
+| B07 dietary overlap | #4 | |
+| B08 minimum quantities | #15 | |
+| B09 VAT/currency/rounding | #14, #17 | |
+| B10 delivery zones/fees/slots | #19, #5 | |
+| B11 availability/capacity | #5 | |
+| B12 allergen verification | #8 | |
+| B13 kashrut | #9 | |
+| B14 notifications | #13 | |
+| B15 quote revisions, B17 owner-proposed edits | #6, #7 | |
+| B16 cancellation/refunds/payments | #2, #7 | |
+| B18 disposables/alcohol | #10, #11 | |
+| B19 voice AI | #27 | |
+| B20 spatial composition/timing | #25 (composition); timing tuned in Gate 1 | |
+
 ## Decision log
 
 When a decision is made, record it here and move the row out of the table above.
@@ -33,3 +68,6 @@ When a decision is made, record it here and move the row out of the table above.
 | Date | # | Decision | Decided by |
 |---|---|---|---|
 | 2026-10-29 | 12 | Interface language is **Hebrew only, RTL**. AI responses must also be in Hebrew. | Project owner (chat) |
+| 2026-10-31 | 12 (scope note) | Gate 1 of the Infinite Table (`/table/`) is built in **English** for design review. Production language stays Hebrew-only RTL; all copy lives in `frontend/js/table/strings.en.js` and layout uses logical properties so Hebrew is a data change, not a rewrite. | Project owner (chat) |
+| 2026-10-31 | 23 (placeholder only) | Heebo (already self-hosted) is the provisional Hebrew display font until the brand typeface is chosen. Not yet applied: Gate 1 is English. | Project owner (chat) |
+| 2026-11-01 | handoff doc 01/03 scope note | Owner approved adding an **opt-in "Explore freely" mode** (drag/wheel/pinch pan and zoom, bounded canvas) and a route-driven camera zoom with dishes orbiting the focused category. Relaxes the handoff's "no wheel/drag zoom" rule **only** while the mode is on: it is off by default, every action keeps a click/tap/keyboard path, and reduced-motion removes the camera animation. Desktop/tablet only; phones keep the stacked layout. | Project owner (chat) |
