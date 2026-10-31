@@ -41,6 +41,23 @@ uv run uvicorn app.main:app --reload
 - API health: http://127.0.0.1:8000/health
 - Customer UI: http://127.0.0.1:8000/customer/
 - Admin UI: http://127.0.0.1:8000/admin/
+- Infinite Table customer UI (Gate 1, mock data, English): http://127.0.0.1:8000/table/
+
+### Frontend tests (Infinite Table modules)
+
+```bash
+cd frontend/js/table
+npm test        # node --test, no dependencies (Node 20+)
+```
+
+### Frontend e2e + accessibility (Playwright, axe)
+
+```bash
+cd frontend/e2e
+npm ci
+npx playwright install chromium   # once
+npm test                          # starts its own static server; no backend needed
+```
 
 ### Tests and lint
 

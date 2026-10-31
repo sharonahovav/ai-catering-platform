@@ -1,0 +1,130 @@
+/* Desktop-first grid; responsive.css collapses it. Logical properties only, so it mirrors under dir="rtl". */
+.app {
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--summary-w);
+  grid-template-rows: minmax(var(--topbar-h), auto) auto minmax(0, 1fr);
+  grid-template-areas:
+    "top top top"
+    "banner banner banner"
+    "rail stage summary";
+  min-height: 100dvh;
+  max-width: 2200px;
+  margin-inline: auto;
+  background: var(--color-surface);
+}
+
+.topbar { grid-area: top; }
+.mock-banner { grid-area: banner; }
+.rail { grid-area: rail; }
+.stage { grid-area: stage; }
+.summary { grid-area: summary; }
+
+.stage {
+  position: relative;
+  min-width: 0;
+  min-height: 36rem;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 53% 46%, #F7E2DF 0, var(--color-surface) 44%, var(--color-bg) 78%);
+}
+
+.pane {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transform-origin: var(--zoom-x, 50%) var(--zoom-y, 45%);
+}
+
+/* ---------- scene camera ---------- */
+/* .world is everything that is part of the picture; the camera moves it with a transform (see Scene.js). */
+.world { position: absolute; inset: 0; transform-origin: 0 0; }
+
+/* ---------- overview composition ---------- */
+.intro {
+  position: absolute;
+  z-index: 3;
+  inset-inline-start: 5%;
+  inset-block-start: 15%;
+  max-inline-size: 24rem;
+  pointer-events: none;
+}
+.category-nav { position: absolute; z-index: 5; inset-block-start: var(--space-5); inset-inline: 5%; }
+
+.nodes { position: absolute; inset: 0; }
+.node { position: absolute; z-index: 4; }
+.slot-0 { inset-inline-start: 46%; inset-block-start: 28%; inline-size: 22%; block-size: 27%; }
+.slot-1 { inset-inline-start: 6%;  inset-block-start: 55%; inline-size: 20%; block-size: 20%; }
+.slot-2 { inset-inline-start: 29%; inset-block-end: 6%;    inline-size: 20%; block-size: 20%; }
+.slot-3 { inset-inline-end: 8%;    inset-block-start: 17%; inline-size: 19%; block-size: 22%; }
+.slot-4 { inset-inline-end: 12%;   inset-block-end: 9%;    inline-size: 19%; block-size: 19%; }
+.slot-5 { inset-inline-start: 52%; inset-block-end: 5%;    inline-size: 13%; block-size: 16%; }
+
+.float { position: absolute; z-index: 2; pointer-events: none; opacity: 0.85; filter: drop-shadow(0 10px 8px rgb(80 56 48 / 0.12)); }
+.float-radish { inset-inline-end: 26%; inset-block-start: 10%; inline-size: 5.5rem; transform: rotate(-24deg); }
+.float-tomato { inset-inline-start: 4%; inset-block-start: 66%; inline-size: 5.5rem; }
+
+/* ---------- category focus ---------- */
+.focus-inner { padding: 6rem clamp(1.25rem, 5.4%, 4rem) 4rem; max-inline-size: 78rem; margin-inline: auto; }
+.focus-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-5); margin-block-end: var(--space-5); }
+.dish-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+
+/* ---------- top bar, rail, summary ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding-inline: var(--space-5);
+  border-block-end: 1px solid var(--color-line);
+  background: var(--color-surface);
+  z-index: 20;
+}
+.topbar .crumbs { margin-inline: auto; }
+.topbar .actions { display: flex; align-items: center; gap: var(--space-3); }
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-block: var(--space-4);
+  border-inline-end: 1px solid var(--color-line);
+  background: var(--color-surface-raised);
+  z-index: 12;
+}
+
+.summary {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-inline-start: 1px solid var(--color-line);
+  background: var(--color-surface-raised);
+  overflow-y: auto;
+  z-index: 10;
+}
+
+/* ---------- desktop / tablet (>= 900px): scene stays live; the category list becomes a side panel ---------- */
+@media (min-width: 900px) {
+  .pane-overview { overflow: hidden; }
+  .pane-category { overflow: visible; pointer-events: none; }
+  .pane-category .back-link { pointer-events: auto; z-index: 6; }
+  .pane-category .hud {
+    pointer-events: auto;
+    position: absolute; inset-block: 0; inset-inline-start: 0;
+    inline-size: min(19.5rem, 38%); max-inline-size: none; margin: 0;
+    padding: 4.75rem var(--space-4) var(--space-5);
+    overflow-y: auto;
+    /* near-opaque backing: text never sits directly on busy imagery */
+    background: color-mix(in srgb, var(--color-surface) 95%, transparent);
+    border-inline-end: 1px solid var(--color-line);
+  }
+  .hud .focus-head { flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-block-end: var(--space-4); }
+  .hud .count, .hud .focus-head p:not(.eyebrow) { display: none; }
+  .hud .chips { margin-block-end: var(--space-4); }
+  .hud .dish-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+
+  .explore { position: absolute; inset-block-start: var(--space-4); inset-inline-end: var(--space-4); z-index: 8; display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); max-inline-size: 22rem; }
+  .explore[hidden] { display: none; }
+}
