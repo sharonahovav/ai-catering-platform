@@ -25,3 +25,8 @@ supabase/.branches/
 Thumbs.db
 .vscode/
 .idea/
+
+# Frontend e2e
+frontend/e2e/node_modules/
+frontend/e2e/test-results/
+frontend/e2e/playwright-report/
