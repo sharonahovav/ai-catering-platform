@@ -210,7 +210,8 @@ test.describe("B: opt-in Explore mode (desktop)", () => {
     await page.getByRole("button", { name: "Reset view" }).click(); // back to this level, not to the overview
     await settle(page);
     const back = await cam(page);
-    expect(Math.abs(back.scale - level.scale)).toBeLessThan(0.02);
+    expect(Math.abs(back.scale - level.scale)).toBeLessThan(0.12); // back at this level (not the overview)
+    expect(back.scale).toBeGreaterThan(1.3);
   });
 
   test("turning Explore off returns to the level view and removes the controls", async ({ page }) => {

@@ -62,18 +62,18 @@
   position: absolute;
   z-index: 3;
   inset-inline-start: 5%;
-  inset-block-start: 22%;
+  inset-block-start: max(22%, calc(var(--strip-h, 3.5rem) + 1rem));
   max-inline-size: 38cqi; /* never wider than the space left of the Salads object, at any stage width */
   pointer-events: none;
 }
-.category-nav { position: absolute; z-index: 5; inset-block-start: var(--space-4); inset-inline-start: 5%; inset-inline-end: 11.5rem; } /* stops short of "Explore freely" */
+.category-nav { position: absolute; z-index: 5; inset-block-start: var(--space-4); inset-inline-start: 5%; inset-inline-end: 15rem; } /* stops well short of "Explore freely": other platforms' fonts are wider than the ones this was drawn with */
 
 .nodes { position: absolute; inset: 0; }
 .node { position: absolute; z-index: 4; }
 .slot-0 { inset-inline-start: 45%; inset-block-start: 27%; inline-size: 22%; block-size: 27%; }
-.slot-1 { inset-inline-start: 5%;  inset-block-start: 58%; inline-size: 19%; block-size: 19%; }
-.slot-2 { inset-inline-start: 28%; inset-block-end: 11%;   inline-size: 20%; block-size: 17%; }
-.slot-3 { inset-inline-start: 52%; inset-block-end: 11%;   inline-size: 17%; block-size: 17%; }
+.slot-1 { inset-inline-start: 4%;  inset-block-end: 11%;   inline-size: 17%; block-size: 17%; }
+.slot-2 { inset-inline-start: 24%; inset-block-end: 11%;   inline-size: 18%; block-size: 17%; }
+.slot-3 { inset-inline-start: 45%; inset-block-end: 11%;   inline-size: 16%; block-size: 17%; }
 .slot-4 { inset-inline-end: 8%;    inset-block-start: 17%; inline-size: 17%; block-size: 20%; }
 .slot-5 { inset-inline-end: 4%;    inset-block-start: 42%; inline-size: 12%; block-size: 22%; }
 .slot-6 { inset-inline-end: 9%;    inset-block-end: 11%;   inline-size: 14%; block-size: 22%; }
@@ -148,3 +148,11 @@
 /* ---------- forms and review (replace the scene while open) ---------- */
 .pane-page { background: var(--color-surface); padding: 5rem clamp(1.25rem, 6%, 4rem) 4rem; }
 .page-inner { max-inline-size: 46rem; margin-inline: auto; display: grid; gap: var(--space-5); align-content: start; }
+
+/* Narrow stages (about 900-1100px windows): one scrollable row of chips instead of several wrapped rows, so the strip
+   has a predictable height at any font. Every chip is still a real link in the tab order, and scrolling follows focus. */
+@container (max-width: 760px) {
+  .category-nav { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-block-end: var(--space-1); }
+  .category-nav .category-list { flex-wrap: nowrap; inline-size: max-content; }
+}
+

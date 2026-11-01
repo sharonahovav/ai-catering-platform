@@ -31,15 +31,22 @@ test.describe("a bigger, richer menu", () => {
   });
 
   test("layout guards: the strip stops before Explore, the hero text is clear, labels fit, props stay behind panels", async ({ page }) => {
-    for (const [w, h] of [[900, 700], [1024, 768], [1100, 700], [1280, 720], [1330, 740], [1440, 900], [1920, 1080]]) {
+    test.setTimeout(150_000); // 14 viewport passes (7 sizes x normal and wide fonts), each waiting for the entrance to finish
+    // The second pass forces a much wider font than the design was drawn with, because other platforms fall back to
+    // wider fonts (CI on Linux found a layout that only held with narrow ones).
+    const passes = [{ name: "normal", css: "" }, { name: "wide fonts", css: ":root{--font-body:Verdana,sans-serif;--font-display:Verdana,sans-serif}" }];
+    for (const [w, h, pass] of passes.flatMap((p) => [[900, 700], [1024, 768], [1100, 700], [1280, 720], [1330, 740], [1440, 900], [1920, 1080]].map(([w, h]) => [w, h, p]))) {
       await page.setViewportSize({ width: w, height: h });
-      await openPlanner(page, "#/plan", `?g=${w}`);
+      await openPlanner(page, "#/plan", `?g=${w}${pass.name[0]}`);
+      if (pass.css) await page.addStyleTag({ content: pass.css });
       await page.waitForTimeout(1600);
       const r = await page.evaluate(() => {
         const box = (el) => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; };
         const hit = (a, b, pad = 0) => Math.min(a.r, b.r) - Math.max(a.l, b.l) > pad && Math.min(a.b, b.b) - Math.max(a.t, b.t) > pad;
         const explore = box(document.querySelector(".explore-toggle"));
-        const chips = [...document.querySelectorAll(".category-list a")].map(box);
+        const nav = box(document.querySelector(".category-nav"));
+        // only the visible part of a chip counts: on narrow stages the strip scrolls and the rest is clipped
+        const chips = [...document.querySelectorAll(".category-list a")].map(box).map((c) => ({ ...c, l: Math.max(c.l, nav.l), r: Math.min(c.r, nav.r) })).filter((c) => c.r > c.l);
         const text = [...document.querySelectorAll(".intro .eyebrow, .intro .display, .intro .lead")].map((e) => { const rg = document.createRange(); rg.selectNodeContents(e); return box(rg); });
         const nodes = [...document.querySelectorAll(".node")].map((e) => ({ id: e.dataset.categoryId, ...box(e) }));
         const props = [...document.querySelectorAll(".prop")].map(box);
@@ -47,14 +54,16 @@ test.describe("a bigger, richer menu", () => {
         const labels = [...document.querySelectorAll(".node-label")].map(box);
         return {
           chipUnderExplore: chips.some((c) => hit(c, explore)),
+          chipOnHero: chips.some((c) => text.some((t) => hit(c, t, 2))),
           textHitNode: nodes.filter((n) => text.some((t) => hit(t, n, 4))).map((n) => n.id),
           textHitProp: props.some((p) => text.some((t) => hit(t, p, 8))),
           labelOutside: labels.filter((l) => l.b > stage.b || l.l < stage.l || l.r > stage.r).length,
           zOrder: [getComputedStyle(document.getElementById("pane-overview")).zIndex, getComputedStyle(document.getElementById("pane-category")).zIndex, getComputedStyle(document.getElementById("pane-page")).zIndex].map(Number),
         };
       });
-      const where = `${w}x${h}`;
+      const where = `${w}x${h} (${pass.name})`;
       expect(r.chipUnderExplore, `strip under Explore at ${where}`).toBe(false);
+      expect(r.chipOnHero, `category chips reach the hero text at ${where}`).toBe(false);
       expect(r.textHitNode, `hero text overlaps a food object at ${where}`).toEqual([]);
       expect(r.textHitProp, `a prop sits on the hero text at ${where}`).toBe(false);
       expect(r.labelOutside, `labels cut off at ${where}`).toBe(0);

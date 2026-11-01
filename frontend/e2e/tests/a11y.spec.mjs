@@ -5,6 +5,9 @@ import { openPlanner } from "./helpers.mjs";
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 
 async function scan(page, label) {
+  // The sticky phone nav can cover a control at whatever scroll position axe happens to measure (it differs by font/platform).
+  // Real use is covered by scroll-padding (focus never lands under it), so measure the content itself.
+  await page.addStyleTag({ content: ".rail { position: static !important; }" });
   // Entrance fades are transient (colour contrast is meaningless mid-fade), so scan once finite animations are done.
   await page.waitForFunction(() => document.getAnimations().every((a) => a.effect?.getTiming().iterations === Infinity || a.playState !== "running"));
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();

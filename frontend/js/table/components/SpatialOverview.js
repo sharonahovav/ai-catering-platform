@@ -9,10 +9,9 @@ const BACK = [
   { src: "blood_oranges", d: 0.28, size: "7rem", style: "inset-inline-end: 24%; inset-block-start: 5%; --r: -14deg" },
   { src: "fennel", d: 0.38, size: "8.5rem", style: "inset-inline-start: 40%; inset-block-end: 1%; --r: 16deg" },
   { src: "pea_pod", d: 0.3, size: "7.5rem", style: "inset-inline-start: 72%; inset-block-start: 56%; --r: -28deg" },
-  { src: "pierced_orange", d: 0.45, size: "5.5rem", style: "inset-inline-start: 38%; inset-block-start: 60%; --r: 8deg" },
 ];
 const FRONT = [
-  { src: "purple_bean_pods", d: 1.5, size: "11rem", style: "inset-inline-start: -4%; inset-block-end: -6%; --r: 14deg" },
+  { src: "purple_bean_pods", d: 1.5, size: "10rem", style: "inset-inline-start: -8%; inset-block-end: -10%; --r: 14deg" },
   { src: "pierced_orange", d: 1.7, size: "8rem", style: "inset-inline-end: -2%; inset-block-start: -4%; --r: 24deg" },
   { src: "pearl_tin", d: 1.4, size: "7rem", style: "inset-inline-start: 56%; inset-block-end: -5%; --r: -10deg" },
 ];
@@ -64,5 +63,7 @@ export function mountOverview(root, { t, categories, compactQuery }) {
   const backdrop = h("div", { class: "backdrop", "aria-hidden": "true" }, BACK.map((p) => prop(p, "layer")));
   const frontdrop = h("div", { class: "frontdrop", "aria-hidden": "true" }, FRONT.map((p) => prop(p, "layer")));
   fill(root, backdrop, world, frontdrop, list);
+  // The hero starts below however many rows the chip strip wraps to (fonts differ by platform), instead of assuming its height.
+  new ResizeObserver(() => root.style.setProperty("--strip-h", `${list.offsetHeight + 32}px`)).observe(list);
   return { world, nodesEl, intro, strip: list };
 }
