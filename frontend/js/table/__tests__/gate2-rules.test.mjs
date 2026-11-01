@@ -123,7 +123,10 @@ test("submit makes a quote REQUEST: pending_approval, never approved, with a fro
   assert.equal(o.submission.submittedAt, new Date(NOW).toISOString());
   assert.equal(o.submission.snapshot.items[0].name, "Silky hummus");
   assert.equal(o.submission.snapshot.items[0].quantity, 2);
-  assert.deepEqual(o.submission.snapshot.pricing, { state: "unavailable" }); // price snapshot is still "unavailable", never invented
+  const snap = o.submission.snapshot.pricing;
+  assert.equal(snap.state, "calculated"); // the price at the moment of sending is frozen with the request
+  assert.equal(snap.total.amountMinor, 17000); // 2 trays of hummus at the sample 85.00, pickup has no fee
+  assert.deepEqual([snap.estimate, snap.vatIncluded], [true, true]);
 });
 
 test("submit is idempotent for the same request id, and a second real submit is an invalid transition", async () => {
@@ -159,7 +162,7 @@ test("a stale version cannot submit (the store adopts the server's order)", asyn
 
 /* ---------------- AI proposals ---------------- */
 
-test("a proposal is created without touching the order and carries before/after and an unavailable price", async () => {
+test("a proposal is created without touching the order and carries before/after and a server-calculated price effect", async () => {
   const { store } = await ready();
   const before = JSON.stringify(store.getOrder());
   const res = await store.requestProposal();
@@ -168,7 +171,8 @@ test("a proposal is created without touching the order and carries before/after 
   assert.equal(p.status, "pending");
   assert.equal(p.operation, "add_item");
   assert.deepEqual([p.before.quantity, p.after.quantity], [0, 1]);
-  assert.deepEqual(p.priceDelta, { state: "unavailable" });
+  assert.deepEqual(p.priceDelta, { state: "calculated", currency: "ILS", amountMinor: 11000 }); // one tray of the first dish, calculated by the server
+  assert.equal(p.pricingUnit, "per_tray");
   assert.equal(p.sourceOrderVersion, store.getOrder().version);
   assert.equal(JSON.stringify(store.getOrder()), before); // not applied
 });

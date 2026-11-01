@@ -1,19 +1,31 @@
 import { h, fill } from "../../lib/dom.js";
 import { formatMoney } from "../money.js";
+import { qtyLabel } from "../units.js";
 
 // The itemized summary is a real list and is always the source of truth for "what is on the table".
-// It shows what the service last returned (order + version), never a client-side guess. Once the request is sent
-// the list is read-only and says "pending business approval".
+// It shows what the service last returned (order, version and the server-calculated price), never a client-side
+// guess. Once the request is sent the list is read-only and says "pending business approval".
 export function mountSummary(root, { t, onRemove, onClose }) {
   const title = h("h2", { id: "summary-title", tabindex: "-1" }, t.summary.title);
   const list = h("ul", { class: "order-list", "aria-label": t.summary.itemsLabel });
   const empty = h("p", { class: "empty" }, t.summary.empty);
   const version = h("p", { class: "summary-note num" });
   const statusTag = h("span", { class: "tag tag-warn" });
-  const price = h("strong", null);
   const assistantSlot = h("div", { class: "assistant", id: "assistant" });
   const reviewLink = h("a", { class: "btn btn-primary", href: "#/plan/review" }, t.review.button);
   const reviewHint = h("p", { class: "summary-note" }, t.review.hint);
+
+  // price breakdown: food, delivery, estimated total
+  const food = h("dd", { class: "num" });
+  const delivery = h("dd", { class: "num" });
+  const total = h("dd", { class: "total num" });
+  const estimate = h("p", { class: "summary-note" });
+  const prices = h(
+    "div",
+    { class: "price-box" },
+    h("dl", { class: "price-rows" }, h("dt", null, t.price.food), food, h("dt", null, t.price.delivery), delivery, h("dt", { class: "total-label" }, t.price.total), total),
+    estimate,
+  );
 
   fill(
     root,
@@ -22,7 +34,7 @@ export function mountSummary(root, { t, onRemove, onClose }) {
     h("div", null, statusTag, version),
     list,
     empty,
-    h("div", { class: "price-row" }, h("span", null, t.summary.price), price),
+    prices,
     reviewLink,
     reviewHint,
     assistantSlot,
@@ -33,6 +45,8 @@ export function mountSummary(root, { t, onRemove, onClose }) {
     assistantSlot,
     update({ order, dishesById, justAdded }) {
       const editable = order.status === "draft";
+      const p = order.pricing;
+      const lineOf = (id) => p.lines?.find((l) => l.dishId === id)?.lineTotal;
       fill(
         list,
         order.items.map((item) => {
@@ -42,7 +56,7 @@ export function mountSummary(root, { t, onRemove, onClose }) {
             "li",
             { class: `order-item${item.dishId === justAdded ? " just-added" : ""}`, "data-dish-id": item.dishId, tabindex: "-1" },
             dish ? h("img", { src: dish.image, alt: "", width: 52, height: 52 }) : h("span"),
-            h("div", null, h("strong", null, name), h("span", { class: "num" }, t.summary.line(item.quantity))),
+            h("div", null, h("strong", null, name), h("span", { class: "num" }, `${t.summary.line(qtyLabel(t, dish?.pricingUnit, item.quantity))} · ${formatMoney(lineOf(item.dishId), "", undefined, { compact: true })}`)),
             editable ? h("button", { class: "remove", type: "button", "aria-label": t.summary.remove(name), onclick: () => onRemove(item.dishId) }, h("span", { "aria-hidden": "true" }, "×")) : h("span"),
           );
         }),
@@ -53,7 +67,16 @@ export function mountSummary(root, { t, onRemove, onClose }) {
       version.textContent = t.summary.version(order.version);
       reviewLink.textContent = editable ? t.review.button : t.review.view;
       reviewHint.textContent = editable ? t.review.hint : t.review.sentHint;
-      price.textContent = formatMoney(order.pricing?.total, t.summary.priceValue);
+
+      const has = p.state === "calculated";
+      prices.hidden = !has;
+      if (has) {
+        food.textContent = formatMoney(p.subtotal, "", undefined, { compact: true });
+        const fee = p.deliveryFee;
+        delivery.textContent = fee.state !== "calculated" ? t.price.deliveryPending : fee.amountMinor === 0 ? t.price.pickupFree : formatMoney(fee, "", undefined, { compact: true });
+        total.textContent = formatMoney(p.total, "", undefined, { compact: true });
+        estimate.textContent = `${t.price.estimate} · ${t.price.vatIncluded}${p.totalIncludesDelivery ? "" : ` · ${t.price.deliveryExcluded}`}`;
+      }
     },
   };
 }

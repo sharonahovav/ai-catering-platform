@@ -1,4 +1,6 @@
 import { h, fill } from "../../lib/dom.js";
+import { formatMoney } from "../money.js";
+import { qtyLabel } from "../units.js";
 
 // The table guide. It only ever shows a SERVER-made proposal and only a distinct "Approve change" button can apply it.
 // Reject, dismiss, an expired or stale suggestion, or an outage all leave the order exactly as it is.
@@ -34,9 +36,9 @@ export function mountAssistant(root, { t, onSuggest, onApprove, onReject, onDism
           { class: "proposal", "aria-labelledby": "proposal-title" },
           h("h4", { id: "proposal-title", tabindex: "-1" }, t.assistant.proposalTitle),
           h("dl", null,
-            h("dt", null, proposal.dishName), h("dd", null, t.assistant.now + ": " + t.assistant.qty(proposal.before.quantity)),
-            h("dt", null, t.assistant.after), h("dd", { class: "after" }, t.assistant.qty(proposal.after.quantity)),
-            h("dt", null, t.assistant.price), h("dd", null, t.assistant.priceValue)),
+            h("dt", null, proposal.dishName), h("dd", null, t.assistant.now + ": " + qtyLabel(t, proposal.pricingUnit, proposal.before.quantity)),
+            h("dt", null, t.assistant.after), h("dd", { class: "after" }, qtyLabel(t, proposal.pricingUnit, proposal.after.quantity)),
+            h("dt", null, t.assistant.price), h("dd", { class: "num" }, formatMoney(proposal.priceDelta, t.assistant.priceValue, undefined, { compact: true, signed: true }), " · ", t.price.vatIncluded)),
           h("div", { class: "decision" },
             btn("reject", t.assistant.reject, "btn-ghost", onReject, { disabled: applying }),
             btn("approve", applying ? t.assistant.applying : t.assistant.approve, "btn-primary", onApprove, { disabled: applying })),

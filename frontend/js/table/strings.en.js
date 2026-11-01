@@ -5,7 +5,7 @@ export const t = {
   brand: "yumm.ai", // business name from the owner (2026-11-01); logo and typeface still open (#38)
   pageTitle: "Plan your gathering",
   skip: "Skip to main content",
-  demoBanner: "Demo data. Dishes, images and quantities are placeholders. No prices, serving advice or dietary information here is real, and your table is not saved.",
+  demoBanner: "Demo data. Dishes, images, prices, fees and quantities are made-up samples. Nothing here is real, and your table is not saved.",
   noscript: "This planner needs JavaScript to run.",
 
   nav: {
@@ -58,11 +58,10 @@ export const t = {
     alcoholNote: "Age verification, licensing and kosher-wine rules aren't set up in this demo.",
     unavailable: "Not available",
     unavailableNote: "This dish can't be added right now.",
-    qtyLabel: "Quantity (demo units)",
-    qtyHint: "Demo quantity. Real units, minimums and serving advice will come from the business.",
+    qtyLabel: "Quantity",
+    qtyHint: "Sample quantities and prices for this demo. The real ones come from the business.",
     decrease: "Decrease quantity",
     increase: "Increase quantity",
-    qtyValue: (n) => `${n} demo ${n === 1 ? "unit" : "units"}`,
     add: "Add to my table",
     adding: "Adding…",
     retry: "Try again",
@@ -85,6 +84,26 @@ export const t = {
     name: "Full name",
     phone: "Mobile number",
     phoneHelp: "For example 050-123-4567. We use it to reach you about your request.",
+  },
+
+  units: {
+    per_tray: { one: "tray", other: "trays", per: "per tray" },
+    per_item: { one: "piece", other: "pieces", per: "per piece" },
+    per_weight: { per: "per 100 g" },
+    weight: (n) => (n * 100 >= 1000 ? `${String(n / 10).replace(/\.0$/, "")} kg` : `${n * 100} g`), // quantity counts blocks of 100 g
+  },
+
+  price: {
+    food: "Food",
+    delivery: "Delivery",
+    total: "Estimated total",
+    estimate: "Estimate",
+    vatIncluded: "VAT included",
+    pickupFree: "None (pickup)",
+    deliveryPending: "Choose delivery area",
+    deliveryExcluded: "delivery fee not included yet",
+    each: (money, per) => `${money} ${per}`,
+    note: "Sample prices for this demo. Prices include VAT. This is an estimate until the business approves your request.",
   },
 
   form: {
@@ -159,9 +178,10 @@ export const t = {
     eventTitle: "Event",
     contactTitle: "About you",
     guestsTitle: "Guests",
-    priceTitle: "Price",
+    priceTitle: "Price (estimate)",
     priceValue: "Not available yet",
-    priceNote: "Prices come from the business's own settings, which aren't set up in this demo.",
+    priceNote: "Sample prices for this demo. Prices include VAT. This is an estimate until the business approves your request.",
+    minimum: (amount) => `Add dishes worth at least ${amount} for delivery`,
     change: { event: "Change event details", guests: "Change guests", menu: "Add dishes" },
     notSet: "Not set",
     labels: {
@@ -201,9 +221,8 @@ export const t = {
     proposalTitle: "Suggested change · needs your approval",
     now: "Now",
     after: "After approval",
-    price: "Price effect",
+    price: "Price effect (estimate)",
     priceValue: "Not available yet",
-    qty: (n) => `${n} demo ${n === 1 ? "unit" : "units"}`,
     approve: "Approve change",
     reject: "Reject change",
     applying: "Applying…",
@@ -232,7 +251,7 @@ export const t = {
     statusPending: "Pending business approval · demo",
     empty: "Your table is waiting. Explore a category and choose something delicious.",
     itemsLabel: "Dishes on your table",
-    line: (n) => `× ${n} demo ${n === 1 ? "unit" : "units"}`,
+    line: (label) => `× ${label}`,
     remove: (name) => `Remove ${name} from your table`,
     price: "Estimated price",
     priceValue: "Not available yet",

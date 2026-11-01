@@ -424,3 +424,17 @@ Owner feedback: the table needed to be much more dramatic and dynamic, with more
 
 **Will the visuals improve later?** Yes, in three separate ways: composition and motion (done here, tunable now); the pictures themselves (real photography once the menu exists, Gate 3); and brand identity (#20-#23), which restyles everything through the tokens.
 
+### 7.5 The owner's rules in the demo, with sample prices (2026-11-01)
+
+The owner answered the questionnaire and the project owner allowed sample values for anything still missing, so the demo now follows the real rules with made-up numbers (logged as "demo values" in OPEN_DECISIONS).
+
+**Real rules (from the owner):** contact name and mobile number are part of a request; at least one day's notice; Shabbat and holidays are closed for pickup and delivery (a Friday delivery for a Shabbat meal stays possible); fixed time windows; delivery needs an area from a list, each with a fixed fee; a minimum order for delivery only; prices include VAT and are shown as an estimate; units are per tray, per piece and by weight priced per 100 g; the guide's suggestions round up to whole trays.
+
+**Sample values (replace with the owner's):** the six delivery areas and their fees, the 500 delivery minimum, the window times, three holiday dates, all 26 dish prices, quantity steps (pieces in sixes, weight in 500 g steps, trays singly), and the sample menu.
+
+**Pricing is calculated only by the server (mock):** line totals, subtotal, delivery fee (none for pickup; the area's fee for delivery; "choose area" until one is picked, never a guessed zero), total, and the delivery-minimum check. The page only formats what it is given. An empty order shows no price at all. A proposal's price effect is the server's number, and approving it changes the total by exactly that amount (tested). A sent request freezes its price snapshot.
+
+**Verified (automated, Chromium):** 99 unit tests and 156 e2e tests, two consecutive green runs. New coverage: totals and line prices, units and quantity steps for all three units, delivery fee by area, no guessed fee, the delivery minimum, notice, Shabbat and phone rules, the frozen price, price effect equals total change, unit wording, money formatting. Also looked at in screenshots.
+
+**Not verified / limits:** all prices, fees and dates are samples and some are guesses (the holiday dates especially are not a real calendar); no rounding rule beyond whole agorot (#36); portion-size based quantity suggestions are not built yet (#32); the Hebrew number and currency formatting is untested; real devices, Safari/Firefox and screen readers as before.
+

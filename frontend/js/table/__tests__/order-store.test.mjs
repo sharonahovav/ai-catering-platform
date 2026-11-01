@@ -21,7 +21,8 @@ test("adding an item bumps the version once and returns the authoritative order"
   const store = await ready();
   const res = await store.addItem({ dishId: "hummus", quantity: 2, requestId: "a" });
   assert.equal(res.ok, true);
-  assert.deepEqual(store.getOrder().items, [{ dishId: "hummus", quantity: 2, pricingUnit: null }]);
+  assert.deepEqual(store.getOrder().items, [{ dishId: "hummus", quantity: 2, pricingUnit: "per_tray" }]);
+  assert.equal(store.getOrder().pricing.total.amountMinor, 17000); // the server priced it: 2 x 85.00
   assert.equal(store.getOrder().version, 2);
 });
 

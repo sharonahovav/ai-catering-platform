@@ -351,3 +351,14 @@
 .form-group > legend { font-family: var(--font-display); font-size: var(--text-h3); padding: 0; margin-block-end: var(--space-4); }
 .form-group > * + * { margin-block-start: var(--space-5); }
 
+/* ---------- prices (always the server's numbers, formatted) ---------- */
+.price-tag { font-weight: 700; font-size: var(--text-meta); }
+.price-box { display: grid; gap: var(--space-2); border-block-start: 1px solid var(--color-line); padding-block-start: var(--space-4); }
+.price-rows { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-4); margin: 0; }
+.price-rows dt { color: var(--color-muted); }
+.price-rows dd { margin: 0; text-align: end; font-weight: 600; }
+.price-rows .total-label { color: var(--color-ink); font-weight: 700; padding-block-start: var(--space-2); border-block-start: 1px solid var(--color-line); }
+.price-rows .total { font-family: var(--font-display); font-size: var(--text-h3); padding-block-start: var(--space-2); border-block-start: 1px solid var(--color-line); }
+.review-section .price-rows { grid-template-columns: minmax(8rem, max-content) 1fr; }
+.review-section .price-rows dd { text-align: start; }
+

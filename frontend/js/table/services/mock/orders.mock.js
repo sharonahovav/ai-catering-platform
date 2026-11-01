@@ -11,6 +11,27 @@ const PROPOSAL_TTL_MS = 10 * 60 * 1000;
 const MAX_GUESTS = 10000; // PLACEHOLDER sanity bound
 const pad = (n) => String(n).padStart(2, "0");
 
+const money = (amountMinor) => ({ state: "calculated", currency: "ILS", amountMinor });
+
+/** Everything the customer sees as a price is calculated here, never in the page (and never by the AI). SAMPLE prices. */
+export function pricingOf(order) {
+  if (!order.items.length) return { state: "unavailable", estimate: true, vatIncluded: true, total: { state: "unavailable" } };
+  const lines = order.items.map((i) => {
+    const d = findDish(i.dishId);
+    return { dishId: i.dishId, quantity: i.quantity, unitPrice: d.price, lineTotal: money(d.price.amountMinor * i.quantity) };
+  });
+  const subtotal = lines.reduce((sum, l) => sum + l.lineTotal.amountMinor, 0);
+  const f = order.event.fulfillment;
+  const city = FULFILLMENT.cities.find((c) => c.id === order.event.city);
+  const deliveryFee = f === "pickup" ? money(0) : f === "delivery" && city ? money(city.feeMinor) : { state: "unavailable" };
+  const total = subtotal + (deliveryFee.state === "calculated" ? deliveryFee.amountMinor : 0);
+  return {
+    state: "calculated", estimate: true, vatIncluded: true, lines,
+    subtotal: money(subtotal), deliveryFee, total: money(total), totalIncludesDelivery: deliveryFee.state === "calculated",
+    deliveryMinimum: money(FULFILLMENT.deliveryMinimumMinor),
+  };
+}
+
 const emptyEvent = () => ({ type: null, date: null, fulfillment: null, city: null, address: "", window: null, notes: "" });
 const emptyContact = () => ({ name: "", phone: "" });
 const PHONE = /^05\d{8}$/; // SAMPLE rule: an Israeli mobile number, digits only after removing spaces and dashes
@@ -31,6 +52,7 @@ export function readinessOf(order) {
   if (!order.event.fulfillment) add("event.fulfillment", "event");
   if (!order.event.window) add("event.window", "event");
   if (order.event.fulfillment === "delivery" && !order.event.city) add("event.city", "event");
+  if (order.event.fulfillment === "delivery" && order.items.length && (pricingOf(order).subtotal?.amountMinor ?? 0) < FULFILLMENT.deliveryMinimumMinor) add("delivery.minimum", "menu"); // the owner sets a minimum for delivery
   if (order.event.fulfillment === "delivery" && !order.event.address.trim()) add("event.address", "event");
   if (totalGuests(order.guests) < 1) add("guests.total", "guests");
   return { canSubmit: missing.length === 0, missing };
@@ -40,7 +62,6 @@ export function createMockOrdersService({ latencyMs = 250, failNextCall = false,
   let order = {
     id: "mock-order", version: 1, status: "draft", items: [],
     contact: emptyContact(), event: emptyEvent(), guests: emptyGuests(),
-    pricing: { state: "unavailable", total: { state: "unavailable" } },
     submission: null,
   };
   const replay = new Map(); // idempotency key -> original response
@@ -51,7 +72,7 @@ export function createMockOrdersService({ latencyMs = 250, failNextCall = false,
   const wait = () => (latencyMs ? new Promise((r) => setTimeout(r, latencyMs)) : Promise.resolve());
   const today = () => isoOf(new Date(now()));
   const earliest = () => { const d = new Date(now()); d.setDate(d.getDate() + FULFILLMENT.leadDays); return isoOf(d); }; // the owner needs at least 1 day's notice
-  const view = () => ({ ...clone(order), readiness: readinessOf(order) });
+  const view = () => ({ ...clone(order), pricing: pricingOf(order), readiness: readinessOf(order) });
   const conflict = () => ({ ok: false, code: "order_version_conflict", order: view() });
   const notDraft = () => ({ ok: false, code: "order_not_editable", order: view() });
   const remember = (key, res) => { if (key && res.ok) replay.set(key, clone(res)); return res; };
@@ -176,8 +197,8 @@ export function createMockOrdersService({ latencyMs = 250, failNextCall = false,
       order.submission = {
         submittedAt: new Date(now()).toISOString(),
         snapshot: {
-          items: order.items.map((i) => ({ dishId: i.dishId, name: findDish(i.dishId)?.name ?? i.dishId, quantity: i.quantity, unitLabel: findDish(i.dishId)?.unitLabel ?? null, alcohol: !!findDish(i.dishId)?.alcohol })),
-          contact: clone(order.contact), event: clone(order.event), guests: clone(order.guests), pricing: { state: "unavailable" }, // price snapshot: still unavailable
+          items: order.items.map((i) => ({ dishId: i.dishId, name: findDish(i.dishId)?.name ?? i.dishId, quantity: i.quantity, pricingUnit: findDish(i.dishId)?.pricingUnit ?? null, alcohol: !!findDish(i.dishId)?.alcohol })),
+          contact: clone(order.contact), event: clone(order.event), guests: clone(order.guests), pricing: pricingOf(order), // the price snapshot at the moment of sending: later catalog changes cannot alter it
         },
       };
       order.status = "pending_approval";
@@ -202,9 +223,9 @@ export function createMockOrdersService({ latencyMs = 250, failNextCall = false,
       for (const p of proposals.values()) if (p.status === "pending") p.status = "expired"; // one pending suggestion at a time
       const proposal = {
         id: `proposal-${++proposalSeq}`, orderId, sourceOrderVersion: order.version, operation: "add_item",
-        dishId: dish.id, dishName: dish.name, unitLabel: dish.unitLabel,
-        before: { quantity: 0 }, after: { quantity: 1 },
-        priceDelta: { state: "unavailable" }, // never invented
+        dishId: dish.id, dishName: dish.name, pricingUnit: dish.pricingUnit,
+        before: { quantity: 0 }, after: { quantity: dish.quantityRule.min },
+        priceDelta: money(dish.price.amountMinor * dish.quantityRule.min), // calculated here, never by the AI
         status: "pending", expiresAt: new Date(now() + PROPOSAL_TTL_MS).toISOString(),
       };
       proposals.set(proposal.id, proposal);

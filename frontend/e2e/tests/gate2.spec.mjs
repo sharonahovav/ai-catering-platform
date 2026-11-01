@@ -63,7 +63,8 @@ test.describe("review and quote request", () => {
     await expect(page.locator(".review-list")).toContainText("Silky hummus");
     await expect(page.locator(".review-section").filter({ hasText: "Event" }).first()).toContainText("Birthday");
     await expect(page.getByText(/Monday, March 15, 2027/)).toBeVisible(); // a formatted calendar date, not the raw 2027-03-15
-    await expect(page.locator(".price-line")).toHaveText("Not available yet");
+    await expect(page.locator(".price-line")).toContainText("₪85"); // 1 tray of hummus; pickup has no fee
+    await expect(page.locator(".price-line")).toContainText("Estimate");
     const submit = page.getByRole("button", { name: "Request a quote" });
     await expect(submit).toHaveAttribute("aria-disabled", "false");
 
@@ -242,17 +243,17 @@ test.describe("event and guest forms", () => {
 test.describe("table guide: scripted suggestions that only the customer can approve", () => {
   const suggest = (page) => page.getByRole("button", { name: "Suggest a dish" });
 
-  test("a suggestion shows before/after and an unavailable price, and changes nothing until approved", async ({ page }) => {
+  test("a suggestion shows before/after and a calculated price effect, and changes nothing until approved", async ({ page }) => {
     await openPlanner(page);
     await suggest(page).click();
     const card = page.locator(".proposal");
     await expect(card).toBeVisible();
     await expect(page.locator("#proposal-title")).toHaveText("Suggested change · needs your approval");
     await expect(page.locator("#proposal-title")).toBeFocused();
-    await expect(card).toContainText("Now: 0 demo units");
-    await expect(card).toContainText("1 demo unit");
+    await expect(card).toContainText("Now: 0 trays");
+    await expect(card).toContainText("1 tray");
     await expect(card).toContainText("Price effect");
-    await expect(card).toContainText("Not available yet");
+    await expect(card).toContainText("+₪110"); // the server's number for one tray, not the AI's
     await expect(page.getByRole("button", { name: "Approve change" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Reject change" })).toBeVisible();
     await expect(page.locator("#summary .order-item")).toHaveCount(0); // not applied
@@ -279,7 +280,7 @@ test.describe("table guide: scripted suggestions that only the customer can appr
     await approve.evaluate((el) => { el.click(); el.click(); el.click(); });
     await expect(page.locator("#proposal-title")).toHaveText("Change applied");
     await expect(page.locator("#summary .order-item")).toHaveCount(1);
-    await expect(page.locator("#summary .order-item")).toContainText("× 1 demo unit"); // not 3
+    await expect(page.locator("#summary .order-item")).toContainText("× 1 tray"); // not 3
     await expect(version(page)).toHaveText("Order version 2");
     await expect(page.locator("#announce")).toContainText("Approved. Added");
     await page.getByRole("button", { name: "Dismiss" }).click();

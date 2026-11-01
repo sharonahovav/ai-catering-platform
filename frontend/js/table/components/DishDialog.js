@@ -1,4 +1,6 @@
 import { h, fill } from "../../lib/dom.js";
+import { formatMoney } from "../money.js";
+import { perUnit, qtyLabel } from "../units.js";
 
 // Native <dialog>.showModal() gives us the focus trap, inert background and top layer. Escape and the backdrop
 // are routed through `onClose` so closing goes through browser history (Back closes the sheet too).
@@ -38,7 +40,7 @@ export function mountDishDialog(dialog, { t, onClose, onStep, onAdd }) {
           "dl",
           { class: "facts" },
           h("dt", null, t.dish.price),
-          h("dd", null, t.dish.priceValue),
+          h("dd", null, t.price.each(formatMoney(dish.price, t.dish.priceValue, undefined, { compact: true }), perUnit(t, dish.pricingUnit)), " · ", t.price.vatIncluded),
           h("dt", null, t.dish.dietary),
           h("dd", null, t.dish.dietaryValue),
           h("dt", null, t.dish.availability),
@@ -81,7 +83,7 @@ export function mountDishDialog(dialog, { t, onClose, onStep, onAdd }) {
     update(draft) {
       if (!ui || !draft) return;
       const { out, minus, plus, error, add, rule, note } = ui;
-      out.textContent = t.dish.qtyValue(draft.quantity);
+      out.textContent = qtyLabel(t, dish.pricingUnit, draft.quantity);
       minus.setAttribute("aria-disabled", String(rule.state !== "configured" || draft.quantity <= rule.min));
       plus.setAttribute("aria-disabled", String(rule.state !== "configured" || draft.quantity + rule.step > rule.max));
       const adding = draft.status === "adding";

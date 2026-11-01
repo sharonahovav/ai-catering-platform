@@ -1,4 +1,6 @@
 import { h } from "../../lib/dom.js";
+import { formatMoney } from "../money.js";
+import { perUnit } from "../units.js";
 
 export function dishCard(dish, categoryId, t) {
   return h(
@@ -13,6 +15,7 @@ export function dishCard(dish, categoryId, t) {
         { class: "dish-info" },
         h("h3", null, dish.name),
         dish.description && h("p", null, dish.description),
+        h("span", { class: "price-tag num" }, t.price.each(formatMoney(dish.price, "", undefined, { compact: true }), perUnit(t, dish.pricingUnit))),
         h("div", { class: "tags" }, h("span", { class: "tag" }, t.category.demoTag), !dish.available && h("span", { class: "tag tag-warn" }, t.category.unavailable), dish.alcohol && h("span", { class: "tag tag-warn" }, t.category.alcoholTag)),
         h(
           "button",

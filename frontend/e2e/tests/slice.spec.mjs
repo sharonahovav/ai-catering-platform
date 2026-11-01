@@ -18,7 +18,7 @@ test.describe("Gate 1 slice: overview > category > dish > quantity > add > overv
     const plus = page.getByRole("button", { name: "Increase quantity" });
     await plus.click();
     await plus.click();
-    await expect(page.locator("#dish-dialog output")).toHaveText("3 demo units");
+    await expect(page.locator("#dish-dialog output")).toHaveText("3 trays");
     // Quantity changes are view state: the order is untouched until Add.
     await expect(page.locator("#summary .order-item")).toHaveCount(0);
     await expect(page.locator("#summary .summary-note.num")).toHaveText("Order version 1");
@@ -30,11 +30,12 @@ test.describe("Gate 1 slice: overview > category > dish > quantity > add > overv
     expect(route(page)).toBe("#/plan");
     await expect(page.locator("#summary .order-item")).toHaveCount(1);
     await expect(page.locator("#summary .order-item")).toContainText("Beet & citrus salad");
-    await expect(page.locator("#summary .order-item")).toContainText("× 3 demo units"); // not 9: repeat clicks are one mutation
+    await expect(page.locator("#summary .order-item")).toContainText("× 3 trays"); // not 9: repeat clicks are one mutation
     await expect(page.locator("#summary .summary-note.num")).toHaveText("Order version 2");
     await expect(page.locator("#summary .order-item")).toBeFocused();
     await expect(page.locator("#announce")).toHaveText("Added 3 × Beet & citrus salad. Your table now has 1 dish.");
-    await expect(page.locator("#summary")).toContainText("Not available yet"); // price never invented
+    await expect(page.locator("#summary .price-rows")).toContainText("₪330"); // 3 trays at the sample 110, calculated by the server
+    await expect(page.locator("#summary")).toContainText("Estimate · VAT included");
 
     // History: the dish entry was replaced, so Back goes to the category (never to a stale sheet), then Forward.
     await page.goBack();
@@ -93,7 +94,7 @@ test.describe("Gate 1 slice: overview > category > dish > quantity > add > overv
     await expect(page.locator("#summary .summary-note.num")).toHaveText("Order version 1");
     await page.locator("#dish-dialog .btn-primary").click(); // label is now "Try again"
     await expect(page.locator("#summary .order-item")).toHaveCount(1);
-    await expect(page.locator("#summary .order-item")).toContainText("× 1 demo unit");
+    await expect(page.locator("#summary .order-item")).toContainText("× 1 tray");
   });
 
   test("unknown routes fall back to the overview and say so", async ({ page }) => {
