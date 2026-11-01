@@ -9,6 +9,9 @@ const STATES = [
   ["overview", "#/plan"],
   ["category", "#/plan/menu/salads"],
   ["dish sheet", "#/plan/menu/salads/dish/beet_citrus_salad"],
+  ["event form", "#/plan/event"],
+  ["guests form", "#/plan/guests"],
+  ["review", "#/plan/review"],
 ];
 
 for (const [w, h] of VIEWPORTS) {

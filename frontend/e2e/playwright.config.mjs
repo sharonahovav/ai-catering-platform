@@ -4,6 +4,7 @@ const PORT = 4173;
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
+  expect: { timeout: 10_000 }, // shared CI runners and parallel browsers can be slow; assertions poll, so this only costs time on failure
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",

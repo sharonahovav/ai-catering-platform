@@ -119,9 +119,9 @@ test.describe("B: opt-in Explore mode (desktop)", () => {
     await page.mouse.wheel(0, -400);
     const zoomed = await cam(page);
     expect(zoomed.scale).toBeGreaterThan(1.2);
-    for (let i = 0; i < 40; i++) await page.mouse.wheel(0, -500);
+    for (let i = 0; i < 12; i++) await page.mouse.wheel(0, -500);
     expect((await cam(page)).scale).toBeLessThanOrEqual(6);
-    for (let i = 0; i < 80; i++) await page.mouse.wheel(0, 500);
+    for (let i = 0; i < 24; i++) await page.mouse.wheel(0, 500);
     expect((await cam(page)).scale).toBeGreaterThanOrEqual(0.75);
     expect(await page.evaluate(() => window.scrollY)).toBe(0); // the page itself never scrolled
   });

@@ -4,7 +4,7 @@ import { expect } from "@playwright/test";
 export async function openPlanner(page, hash = "#/plan", query = "") {
   await page.goto(`/table/${query}${hash}`);
   await page.locator("#pane-overview .node").first().waitFor({ state: "attached" });
-  await expect(page.locator("#main")).toHaveAttribute("data-view", /overview|category/);
+  await expect(page.locator("#main")).toHaveAttribute("data-view", /overview|category|page/);
 }
 
 /** Rapid clicks on a control, bypassing actionability waits (the control is aria-disabled while saving). */

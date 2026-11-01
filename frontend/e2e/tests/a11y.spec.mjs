@@ -5,6 +5,8 @@ import { openPlanner } from "./helpers.mjs";
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 
 async function scan(page, label) {
+  // Entrance fades are transient (colour contrast is meaningless mid-fade), so scan once finite animations are done.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.effect?.getTiming().iterations === Infinity || a.playState !== "running"));
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   const summary = results.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`);
   expect(summary, `axe violations: ${label}`).toEqual([]);
@@ -69,3 +71,73 @@ test.describe("axe: desktop camera states", () => {
     await scan(page, "explore on, category");
   });
 });
+
+// ---- Gate 2: forms, review, and the table guide ----
+async function completeOrder(page) {
+  await page.goto("/table/#/plan/menu/sides/dish/hummus");
+  await page.locator("#pane-overview .node").first().waitFor({ state: "attached" });
+  await page.locator("#dish-dialog .btn-primary").click();
+  await expect(page.locator("#summary-title")).toBeAttached();
+  await page.getByRole("link", { name: "Event", exact: true }).click();
+  await page.getByLabel("Event type").selectOption("birthday");
+  await page.getByLabel("Event date").fill("2027-03-15");
+  await page.getByLabel("Pickup", { exact: true }).check();
+  await page.getByRole("button", { name: "Save details" }).click();
+  await expect(page.locator(".form-status")).toHaveText("Details saved.");
+  await page.getByRole("link", { name: "Guests", exact: true }).click();
+  await page.getByLabel("Adults").fill("8");
+  await page.getByRole("button", { name: "Save details" }).click();
+  await expect(page.locator(".form-status")).toHaveText("Details saved.");
+}
+
+for (const [name, size] of [
+  ["desktop", { width: 1280, height: 720 }],
+  ["phone", { width: 390, height: 844 }],
+]) {
+  test.describe(`axe gate 2: ${name}`, () => {
+    test.use({ viewport: size });
+
+    test("event form", async ({ page }) => {
+      await openPlanner(page, "#/plan/event");
+      // axe measures the current scroll position; a sticky bottom bar can cover a field at the fold, so scroll first.
+      await page.getByLabel("Requested time").scrollIntoViewIfNeeded();
+      await scan(page, "event form");
+    });
+    test("guests form", async ({ page }) => { await openPlanner(page, "#/plan/guests"); await scan(page, "guests form"); });
+    test("event form with validation errors", async ({ page }) => {
+      await openPlanner(page, "#/plan/event");
+      await page.getByLabel("Event date").fill("2020-01-01");
+      await page.getByRole("button", { name: "Save details" }).click();
+      await expect(page.locator(".error-summary")).toBeVisible();
+      await scan(page, "event form errors");
+    });
+    test("review: incomplete", async ({ page }) => { await openPlanner(page, "#/plan/review"); await scan(page, "review incomplete"); });
+    test("review: ready to send", async ({ page }) => {
+      await openPlanner(page);
+      await completeOrder(page);
+      await page.getByRole("link", { name: "Review", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Request a quote" })).toHaveAttribute("aria-disabled", "false");
+      await scan(page, "review ready");
+    });
+    test("review: pending business approval, and locked forms", async ({ page }) => {
+      await openPlanner(page);
+      await completeOrder(page);
+      await page.getByRole("link", { name: "Review", exact: true }).click();
+      await page.getByRole("button", { name: "Request a quote" }).click();
+      await expect(page.locator(".status-banner")).toContainText("Pending business approval");
+      await scan(page, "review pending");
+      await page.getByRole("link", { name: "Event", exact: true }).click();
+      await scan(page, "locked form");
+    });
+    test("table guide: proposal, then applied", async ({ page }) => {
+      await openPlanner(page);
+      if (size.width < 900) await page.locator(".table-toggle").click();
+      await page.getByRole("button", { name: "Suggest a dish" }).click();
+      await expect(page.locator(".proposal")).toBeVisible();
+      await scan(page, "proposal");
+      await page.getByRole("button", { name: "Approve change" }).click();
+      await expect(page.locator("#proposal-title")).toHaveText("Change applied");
+      await scan(page, "proposal applied");
+    });
+  });
+}

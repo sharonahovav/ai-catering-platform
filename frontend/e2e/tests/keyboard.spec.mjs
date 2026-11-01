@@ -5,7 +5,7 @@ test.describe("keyboard and one-path-per-category", () => {
   test("wide screens: nodes are pointer-only; the text strip is the single keyboard/AT path", async ({ page }) => {
     await openPlanner(page);
     const nodes = page.locator("#pane-overview .node");
-    await expect(nodes).toHaveCount(4);
+    await expect(nodes).toHaveCount(7);
     for (const n of await nodes.all()) {
       await expect(n).toHaveAttribute("aria-hidden", "true");
       await expect(n).toHaveAttribute("tabindex", "-1");
@@ -26,7 +26,7 @@ test.describe("keyboard and one-path-per-category", () => {
     }
     expect(seen.some((s) => s.node)).toBe(false);
     const chips = seen.filter((s) => s.chip).map((s) => s.chip);
-    expect(chips.slice(0, 4)).toEqual(["salads", "mains", "sides", "sweets"]);
+    expect(chips.slice(0, 7)).toEqual(["salads", "hors_doeuvres", "mains", "sides", "sweets", "soft_drinks", "wine_cocktails"]);
     expect(chips.filter((c) => c === "salads").length).toBeLessThanOrEqual(2); // tab loop may wrap once at most
   });
 
