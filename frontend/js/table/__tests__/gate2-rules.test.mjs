@@ -24,7 +24,7 @@ const ready = async (opts) => {
 };
 const fillOrder = async (store) => {
   await store.addItem({ dishId: "hummus", quantity: 2, requestId: "i1" });
-  const ev = await store.updateDetails({ event: { type: "birthday", date: "2026-11-20", fulfillment: "pickup" } }, "e1");
+  const ev = await store.updateDetails({ contact: { name: "Dana Levi", phone: "050-123-4567" }, event: { type: "birthday", date: "2026-11-20", fulfillment: "pickup", window: "12-14" } }, "e1");
   const gu = await store.updateDetails({ guests: { adults: 8, children: 2 } }, "g1");
   assert.ok(ev.ok && gu.ok, JSON.stringify([ev, gu]));
 };
@@ -33,17 +33,20 @@ test("a new order is not ready: every required piece is listed with its section"
   const { store } = await ready();
   const { canSubmit, missing } = store.getOrder().readiness;
   assert.equal(canSubmit, false);
-  assert.deepEqual(missing.map((m) => m.code), ["items", "event.type", "event.date", "event.fulfillment", "guests.total"]);
-  assert.deepEqual(missing.map((m) => m.section), ["menu", "event", "event", "event", "guests"]);
+  assert.deepEqual(missing.map((m) => m.code), ["items", "contact.name", "contact.phone", "event.type", "event.date", "event.fulfillment", "event.window", "guests.total"]);
+  assert.deepEqual(missing.map((m) => m.section), ["menu", "event", "event", "event", "event", "event", "event", "guests"]);
 });
 
-test("delivery additionally needs an address", async () => {
+test("delivery additionally needs a city and a street address; pickup does not", async () => {
   const { store } = await ready();
   await store.updateDetails({ event: { fulfillment: "delivery" } }, "e1");
-  assert.ok(store.getOrder().readiness.missing.some((m) => m.code === "event.address"));
-  await store.updateDetails({ event: { address: "  12 Example St  " } }, "e2");
+  const codes = () => store.getOrder().readiness.missing.map((m) => m.code);
+  assert.ok(codes().includes("event.city") && codes().includes("event.address"));
+  await store.updateDetails({ event: { city: "herzliya", address: "  12 Example St  " } }, "e2");
   assert.equal(store.getOrder().event.address, "12 Example St"); // trimmed
-  assert.ok(!store.getOrder().readiness.missing.some((m) => m.code === "event.address"));
+  assert.ok(!codes().includes("event.city") && !codes().includes("event.address"));
+  await store.updateDetails({ event: { fulfillment: "pickup", window: null } }, "e3");
+  assert.ok(!codes().includes("event.city") && !codes().includes("event.address")); // not asked for pickup
 });
 
 test("details validation returns field codes and leaves the order untouched", async () => {
@@ -69,10 +72,36 @@ test("dietary groups overlap: each is checked against the total and never summed
   assert.equal(over.details.fields["guests.vegan"], "exceeds_total");
 });
 
-test("today is allowed as an event date; the day before is not (PLACEHOLDER rule)", async () => {
+test("the owner needs one day's notice: today is too soon, tomorrow is fine, the past is past", async () => {
+  const { store } = await ready(); // clock: Tuesday 2026-11-10
+  assert.equal((await store.updateDetails({ event: { date: "2026-11-09" } }, "d1")).details.fields["event.date"], "past");
+  assert.equal((await store.updateDetails({ event: { date: "2026-11-10" } }, "d2")).details.fields["event.date"], "too_soon");
+  assert.ok((await store.updateDetails({ event: { date: "2026-11-11" } }, "d3")).ok);
+});
+
+test("Shabbat and holidays are blocked for pickup and delivery (sample holiday dates)", async () => {
   const { store } = await ready();
-  assert.ok((await store.updateDetails({ event: { date: "2026-11-10" } }, "d1")).ok);
-  assert.equal((await store.updateDetails({ event: { date: "2026-11-09" } }, "d2")).details.fields["event.date"], "past");
+  assert.equal((await store.updateDetails({ event: { date: "2026-11-14" } }, "b1")).details.fields["event.date"], "blocked_day"); // a Saturday
+  assert.ok((await store.updateDetails({ event: { date: "2026-11-13" } }, "b2")).ok); // the Friday before: a Shabbat meal is delivered then
+  assert.equal((await store.updateDetails({ event: { date: "2027-04-22" } }, "b3")).details.fields["event.date"], "blocked_day"); // a sample holiday
+});
+
+test("contact: a mobile number must look like one; empty is allowed while drafting but blocks sending", async () => {
+  const { store } = await ready();
+  assert.equal((await store.updateDetails({ contact: { phone: "12345" } }, "c1")).details.fields["contact.phone"], "phone");
+  assert.equal((await store.updateDetails({ contact: { name: "x".repeat(81) } }, "c2")).details.fields["contact.name"], "too_long");
+  assert.ok((await store.updateDetails({ contact: { name: "  Dana Levi ", phone: "050 123 4567" } }, "c3")).ok);
+  assert.equal(store.getOrder().contact.name, "Dana Levi"); // trimmed
+  assert.ok(!store.getOrder().readiness.missing.some((m) => m.code.startsWith("contact.")));
+});
+
+test("time windows belong to pickup or delivery; a delivery area must be on the list", async () => {
+  const { store } = await ready();
+  await store.updateDetails({ event: { fulfillment: "pickup" } }, "w0");
+  assert.equal((await store.updateDetails({ event: { window: "09-11" } }, "w1")).details.fields["event.window"], "invalid"); // that is a delivery window
+  assert.ok((await store.updateDetails({ event: { window: "10-12" } }, "w2")).ok);
+  assert.equal((await store.updateDetails({ event: { city: "narnia" } }, "w3")).details.fields["event.city"], "invalid");
+  assert.ok((await store.updateDetails({ event: { fulfillment: "delivery", window: "14-16", city: "tel_aviv" } }, "w4")).ok);
 });
 
 test("submitting an incomplete order is refused with what is missing, and changes nothing", async () => {
@@ -257,7 +286,7 @@ test("only a currently-pending proposal can show Approve", () => {
 });
 
 test("readinessOf is a pure function of the order", () => {
-  const order = { items: [{}], event: { type: "other", date: "2026-12-01", fulfillment: "pickup", address: "" }, guests: { adults: 1, children: 0 } };
+  const order = { items: [{}], contact: { name: "A", phone: "0501234567" }, event: { type: "other", date: "2026-12-01", fulfillment: "pickup", window: "12-14", city: null, address: "" }, guests: { adults: 1, children: 0 } };
   assert.deepEqual(readinessOf(order), { canSubmit: true, missing: [] });
 });
 
@@ -276,6 +305,13 @@ test("alcohol is a catalog flag that survives into the frozen snapshot, and the 
   const items = store.getOrder().submission.snapshot.items;
   assert.equal(items.find((i) => i.dishId === "red_wine").alcohol, true);
   assert.equal(items.find((i) => i.dishId === "hummus").alcohol, false);
+});
+
+test("the frozen snapshot keeps the contact details too", async () => {
+  const { store } = await ready();
+  await fillOrder(store);
+  await store.submit("s1");
+  assert.deepEqual(store.getOrder().submission.snapshot.contact, { name: "Dana Levi", phone: "050-123-4567" });
 });
 
 test("the catalog is organised into the seven categories, each with at least two dishes and a real image path", () => {

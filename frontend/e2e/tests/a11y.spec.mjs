@@ -82,9 +82,12 @@ async function completeOrder(page) {
   await page.locator("#dish-dialog .btn-primary").click();
   await expect(page.locator("#summary-title")).toBeAttached();
   await page.getByRole("link", { name: "Event", exact: true }).click();
+  await page.getByLabel("Full name").fill("Dana Levi");
+  await page.getByLabel("Mobile number").fill("050-123-4567");
   await page.getByLabel("Event type").selectOption("birthday");
   await page.getByLabel("Event date").fill("2027-03-15");
   await page.getByLabel("Pickup", { exact: true }).check();
+  await page.getByLabel("Time window").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.locator(".form-status")).toHaveText("Details saved.");
   await page.getByRole("link", { name: "Guests", exact: true }).click();
@@ -103,7 +106,7 @@ for (const [name, size] of [
     test("event form", async ({ page }) => {
       await openPlanner(page, "#/plan/event");
       // axe measures the current scroll position; a sticky bottom bar can cover a field at the fold, so scroll first.
-      await page.getByLabel("Requested time").scrollIntoViewIfNeeded();
+      await page.getByLabel("Anything else").scrollIntoViewIfNeeded();
       await scan(page, "event form");
     });
     test("guests form", async ({ page }) => { await openPlanner(page, "#/plan/guests"); await scan(page, "guests form"); });

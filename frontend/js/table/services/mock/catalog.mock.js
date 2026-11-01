@@ -76,6 +76,29 @@ export const DISHES = [
 
 export const findDish = (id) => DISHES.find((d) => d.id === id) ?? null;
 
+// SAMPLE fulfillment settings for the demo. The OWNER'S RULES (from the questionnaire, 2026-11-01) are real: at least
+// 1 day's notice, no daily limit, fixed time windows, a list of delivery cities with a fixed fee each, a delivery
+// minimum, and Shabbat and holidays blocked. The VALUES below (which cities, the fees, the window times, the minimum,
+// the holiday dates) are made up for the demo; the real ones are OPEN_DECISIONS #33 and #34.
+export const FULFILLMENT = {
+  leadDays: 1,
+  closedWeekday: 6, // Saturday
+  blockedDates: ["2027-04-22", "2027-06-11", "2027-10-12"], // SAMPLE dates standing in for a real Jewish-holiday calendar
+  deliveryMinimumMinor: 50000, // SAMPLE: 500.00 ILS
+  cities: [
+    { id: "tel_aviv", name: "Tel Aviv-Yafo", feeMinor: 6000 },
+    { id: "ramat_gan", name: "Ramat Gan", feeMinor: 6000 },
+    { id: "givatayim", name: "Givatayim", feeMinor: 6000 },
+    { id: "herzliya", name: "Herzliya", feeMinor: 9000 },
+    { id: "petah_tikva", name: "Petah Tikva", feeMinor: 10000 },
+    { id: "rishon", name: "Rishon LeZion", feeMinor: 11000 },
+  ],
+  windows: {
+    pickup: [{ id: "10-12", label: "10:00 to 12:00" }, { id: "12-14", label: "12:00 to 14:00" }, { id: "15-17", label: "15:00 to 17:00" }],
+    delivery: [{ id: "09-11", label: "09:00 to 11:00" }, { id: "11-13", label: "11:00 to 13:00" }, { id: "14-16", label: "14:00 to 16:00" }],
+  },
+};
+
 // PLACEHOLDER event types, taken from the private-event examples in docs/PRD.md. The real list is owner-configured.
 export const EVENT_TYPES = [
   { id: "birthday", name: "Birthday" },

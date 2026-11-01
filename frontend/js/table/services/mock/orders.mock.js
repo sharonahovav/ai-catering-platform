@@ -4,14 +4,18 @@
 // It returns CODES, never display copy, so the UI owns wording (and Hebrew stays a strings change).
 // Rules marked PLACEHOLDER are NOT business rules: they exist so the UI can be exercised (OPEN_DECISIONS #3-#5, #15).
 // The order lives in memory only (lost on refresh, by design).
-import { EVENT_TYPES, findDish, DISHES, source } from "./catalog.mock.js";
+import { EVENT_TYPES, FULFILLMENT, findDish, DISHES, source } from "./catalog.mock.js";
 
 const clone = (v) => structuredClone(v);
 const PROPOSAL_TTL_MS = 10 * 60 * 1000;
 const MAX_GUESTS = 10000; // PLACEHOLDER sanity bound
 const pad = (n) => String(n).padStart(2, "0");
 
-const emptyEvent = () => ({ type: null, date: null, fulfillment: null, address: "", requestedTime: "", notes: "" });
+const emptyEvent = () => ({ type: null, date: null, fulfillment: null, city: null, address: "", window: null, notes: "" });
+const emptyContact = () => ({ name: "", phone: "" });
+const PHONE = /^05\d{8}$/; // SAMPLE rule: an Israeli mobile number, digits only after removing spaces and dashes
+const normalizePhone = (v) => String(v ?? "").replace(/[\s-]/g, "");
+const isoOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const emptyGuests = () => ({ adults: 0, children: 0, vegetarian: 0, vegan: 0, other: 0, notes: "" });
 const totalGuests = (g) => g.adults + g.children;
 
@@ -20,9 +24,13 @@ export function readinessOf(order) {
   const missing = [];
   const add = (code, section) => missing.push({ code, section });
   if (!order.items.length) add("items", "menu");
+  if (!order.contact.name.trim()) add("contact.name", "event");
+  if (!PHONE.test(normalizePhone(order.contact.phone))) add("contact.phone", "event");
   if (!order.event.type) add("event.type", "event");
   if (!order.event.date) add("event.date", "event");
   if (!order.event.fulfillment) add("event.fulfillment", "event");
+  if (!order.event.window) add("event.window", "event");
+  if (order.event.fulfillment === "delivery" && !order.event.city) add("event.city", "event");
   if (order.event.fulfillment === "delivery" && !order.event.address.trim()) add("event.address", "event");
   if (totalGuests(order.guests) < 1) add("guests.total", "guests");
   return { canSubmit: missing.length === 0, missing };
@@ -31,7 +39,7 @@ export function readinessOf(order) {
 export function createMockOrdersService({ latencyMs = 250, failNextCall = false, failNextProposal = false, now = () => Date.now() } = {}) {
   let order = {
     id: "mock-order", version: 1, status: "draft", items: [],
-    event: emptyEvent(), guests: emptyGuests(),
+    contact: emptyContact(), event: emptyEvent(), guests: emptyGuests(),
     pricing: { state: "unavailable", total: { state: "unavailable" } },
     submission: null,
   };
@@ -41,7 +49,8 @@ export function createMockOrdersService({ latencyMs = 250, failNextCall = false,
   let failNext = failNextCall;
   let failProposal = failNextProposal;
   const wait = () => (latencyMs ? new Promise((r) => setTimeout(r, latencyMs)) : Promise.resolve());
-  const today = () => { const d = new Date(now()); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const today = () => isoOf(new Date(now()));
+  const earliest = () => { const d = new Date(now()); d.setDate(d.getDate() + FULFILLMENT.leadDays); return isoOf(d); }; // the owner needs at least 1 day's notice
   const view = () => ({ ...clone(order), readiness: readinessOf(order) });
   const conflict = () => ({ ok: false, code: "order_version_conflict", order: view() });
   const notDraft = () => ({ ok: false, code: "order_not_editable", order: view() });
@@ -56,17 +65,28 @@ export function createMockOrdersService({ latencyMs = 250, failNextCall = false,
   /** Field-level problems as { "event.date": "past", ... }. Codes only. */
   function validateDetails(patch, current) {
     const errors = {};
+    const ct = { ...current.contact, ...(patch.contact ?? {}) };
     const ev = { ...current.event, ...(patch.event ?? {}) };
     const gu = { ...current.guests, ...(patch.guests ?? {}) };
+    if (patch.contact) {
+      if (typeof ct.name !== "string") errors["contact.name"] = "invalid";
+      else if (ct.name.length > 80) errors["contact.name"] = "too_long";
+      if (typeof ct.phone !== "string") errors["contact.phone"] = "invalid";
+      else if (ct.phone.trim() && !PHONE.test(normalizePhone(ct.phone))) errors["contact.phone"] = "phone"; // empty is allowed while drafting; readiness asks for it
+    }
     if (patch.event) {
       if (ev.type !== null && !EVENT_TYPES.some((t) => t.id === ev.type)) errors["event.type"] = "invalid";
       if (ev.date !== null) {
         const real = typeof ev.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(ev.date) && !Number.isNaN(Date.parse(ev.date));
         if (!real) errors["event.date"] = "invalid";
         else if (ev.date < today()) errors["event.date"] = "past";
+        else if (ev.date < earliest()) errors["event.date"] = "too_soon";
+        else if (new Date(...ev.date.split("-").map((n, i) => (i === 1 ? n - 1 : +n))).getDay() === FULFILLMENT.closedWeekday || FULFILLMENT.blockedDates.includes(ev.date)) errors["event.date"] = "blocked_day"; // pickup and delivery are closed on Shabbat and holidays
       }
       if (ev.fulfillment !== null && !["pickup", "delivery"].includes(ev.fulfillment)) errors["event.fulfillment"] = "invalid";
-      for (const [k, max] of [["address", 200], ["requestedTime", 40], ["notes", 500]]) {
+      if (ev.city !== null && !FULFILLMENT.cities.some((c) => c.id === ev.city)) errors["event.city"] = "invalid";
+      if (ev.window !== null && !(FULFILLMENT.windows[ev.fulfillment] ?? []).some((w) => w.id === ev.window)) errors["event.window"] = "invalid"; // must belong to the chosen pickup/delivery list
+      for (const [k, max] of [["address", 200], ["notes", 500]]) {
         if (typeof ev[k] !== "string") errors[`event.${k}`] = "invalid";
         else if (ev[k].length > max) errors[`event.${k}`] = "too_long";
       }
@@ -137,7 +157,8 @@ export function createMockOrdersService({ latencyMs = 250, failNextCall = false,
       if (version !== order.version) return conflict();
       const errors = validateDetails(patch, order);
       if (Object.keys(errors).length) return { ok: false, code: "validation_error", details: { fields: errors } };
-      if (patch.event) order.event = { ...order.event, ...patch.event, address: (patch.event.address ?? order.event.address).trim(), notes: (patch.event.notes ?? order.event.notes).trim(), requestedTime: (patch.event.requestedTime ?? order.event.requestedTime).trim() };
+      if (patch.contact) order.contact = { name: (patch.contact.name ?? order.contact.name).trim(), phone: (patch.contact.phone ?? order.contact.phone).trim() };
+      if (patch.event) order.event = { ...order.event, ...patch.event, address: (patch.event.address ?? order.event.address).trim(), notes: (patch.event.notes ?? order.event.notes).trim() };
       if (patch.guests) order.guests = { ...order.guests, ...patch.guests, notes: (patch.guests.notes ?? order.guests.notes).trim() };
       order.version += 1;
       return remember(idempotencyKey, { ok: true, order: view() });
@@ -156,7 +177,7 @@ export function createMockOrdersService({ latencyMs = 250, failNextCall = false,
         submittedAt: new Date(now()).toISOString(),
         snapshot: {
           items: order.items.map((i) => ({ dishId: i.dishId, name: findDish(i.dishId)?.name ?? i.dishId, quantity: i.quantity, unitLabel: findDish(i.dishId)?.unitLabel ?? null, alcohol: !!findDish(i.dishId)?.alcohol })),
-          event: clone(order.event), guests: clone(order.guests), pricing: { state: "unavailable" }, // price snapshot: still unavailable
+          contact: clone(order.contact), event: clone(order.event), guests: clone(order.guests), pricing: { state: "unavailable" }, // price snapshot: still unavailable
         },
       };
       order.status = "pending_approval";

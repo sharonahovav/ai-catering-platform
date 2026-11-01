@@ -5,11 +5,14 @@ const ROUTE = { menu: "#/plan", event: "#/plan/event", guests: "#/plan/guests" }
 
 // The review page. While the order is a draft it shows live details and what is still missing; once sent it shows
 // the frozen snapshot and says "pending business approval". Nothing on this page ever says "confirmed".
-export function renderQuoteReview(root, { t, order, eventTypes, dishesById, submitting, submitError, onSubmit }) {
+export function renderQuoteReview(root, { t, order, eventTypes, settings, dishesById, submitting, submitError, onSubmit }) {
   const pending = order.status === "pending_approval";
   const snap = pending ? order.submission.snapshot : null;
   const items = pending ? snap.items.map((i) => ({ name: i.name, quantity: i.quantity })) : order.items.map((i) => ({ name: dishesById.get(i.dishId)?.name ?? i.dishId, quantity: i.quantity }));
   const ev = pending ? snap.event : order.event;
+  const ct = pending ? snap.contact : order.contact;
+  const cityName = settings.cities.find((c) => c.id === ev.city)?.name;
+  const windowLabel = (settings.windows[ev.fulfillment] ?? []).find((w) => w.id === ev.window)?.label;
   const gu = pending ? snap.guests : order.guests;
   const typeName = eventTypes.find((e) => e.id === ev.type)?.name;
   const hasAlcohol = pending ? snap.items.some((i) => i.alcohol) : order.items.some((i) => dishesById.get(i.dishId)?.alcohol);
@@ -57,8 +60,9 @@ export function renderQuoteReview(root, { t, order, eventTypes, dishesById, subm
         ? h("ul", { class: "review-list" }, items.map((i) => h("li", null, h("span", null, i.name), h("span", { class: "num" }, t.summary.line(i.quantity)))))
         : h("p", { class: "muted" }, t.check.noItems), hasAlcohol && h("p", { class: "locked-note" }, t.check.alcoholNote), edit("menu", t.check.change.menu)),
       h("section", { class: "review-section", "aria-labelledby": "rv-event" }, h("h3", { id: "rv-event" }, t.check.eventTitle), h("dl", null,
-        row(L.type, typeName), row(L.date, formatDate(ev.date)), row(L.fulfillment, t.check.fulfillment[ev.fulfillment]),
-        ev.fulfillment === "delivery" ? row(L.address, ev.address) : null, row(L.time, ev.requestedTime), row(L.notes, ev.notes)), edit("event", t.check.change.event)),
+        row(L.type, typeName), row(L.date, formatDate(ev.date)), row(L.fulfillment, t.check.fulfillment[ev.fulfillment]), row(L.window, windowLabel),
+        ev.fulfillment === "delivery" ? [row(L.city, cityName), row(L.address, ev.address)] : null, row(L.notes, ev.notes)), edit("event", t.check.change.event)),
+      h("section", { class: "review-section", "aria-labelledby": "rv-contact" }, h("h3", { id: "rv-contact" }, t.check.contactTitle), h("dl", null, row(L.name, ct.name), row(L.phone, ct.phone))),
       h("section", { class: "review-section", "aria-labelledby": "rv-guests" }, h("h3", { id: "rv-guests" }, t.check.guestsTitle), h("dl", null,
         row(L.adults, String(gu.adults)), row(L.children, String(gu.children)), row(L.vegetarian, String(gu.vegetarian)), row(L.vegan, String(gu.vegan)),
         row(L.other, String(gu.other)), row(L.dietaryNotes, gu.notes)), edit("guests", t.check.change.guests)),

@@ -13,9 +13,16 @@ async function addDish(page, categoryId, dishId) {
 }
 async function saveEvent(page, { fulfillment = "Pickup" } = {}) {
   await page.getByRole("link", { name: "Event", exact: true }).click();
+  await page.getByLabel("Full name").fill("Dana Levi");
+  await page.getByLabel("Mobile number").fill("050-123-4567");
   await page.getByLabel("Event type").selectOption("birthday");
   await page.getByLabel("Event date").fill(DATE);
   await page.getByLabel(fulfillment, { exact: true }).check();
+  await page.getByLabel("Time window").selectOption({ index: 1 });
+  if (fulfillment === "Delivery") {
+    await page.getByLabel("Delivery area").selectOption("tel_aviv");
+    await page.getByLabel("Street and house number").fill("12 Example Street");
+  }
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.locator(".form-status")).toHaveText("Details saved.");
 }
@@ -34,7 +41,7 @@ test.describe("review and quote request", () => {
     await expect(page.locator(".status-banner")).toContainText("Not sent yet");
     await expect(page.locator(".status-banner")).toContainText("Nothing has been sent");
     const missing = page.locator(".missing li");
-    await expect(missing).toHaveText(["Choose at least one dish", "Choose an event type", "Choose an event date", "Choose pickup or delivery", "Enter how many guests"]);
+    await expect(missing).toHaveText(["Choose at least one dish", "Enter your full name", "Enter your mobile number", "Choose an event type", "Choose an event date", "Choose pickup or delivery", "Choose a time window", "Enter how many guests"]);
     const submit = page.getByRole("button", { name: "Request a quote" });
     await expect(submit).toHaveAttribute("aria-disabled", "true");
     await submit.click({ force: true }); // pressing a blocked button explains rather than sends
@@ -106,7 +113,7 @@ test.describe("event and guest forms", () => {
     await expect(summary.locator("h3")).toBeFocused();
     const date = page.getByLabel("Event date");
     await expect(date).toHaveAttribute("aria-invalid", "true");
-    await expect(page.locator("#event-date-error")).toHaveText("Choose today or a later date.");
+    await expect(page.locator("#event-date-error")).toHaveText("That date has passed.");
     expect(await date.getAttribute("aria-describedby")).toContain("event-date-error");
     await expect(version(page)).toHaveText("Order version 1"); // nothing was saved
 
@@ -119,22 +126,68 @@ test.describe("event and guest forms", () => {
     await expect(version(page)).toHaveText("Order version 2");
   });
 
-  test("delivery reveals and then requires an address; pickup does not", async ({ page }) => {
+  test("delivery reveals the area and street fields and then requires them; pickup does not", async ({ page }) => {
     await openPlanner(page, "#/plan/event");
-    await expect(page.getByLabel("Delivery address")).toBeHidden();
+    await expect(page.getByLabel("Delivery area")).toBeHidden();
+    await expect(page.getByLabel("Street and house number")).toBeHidden();
     await page.getByLabel("Delivery", { exact: true }).check();
-    await expect(page.getByLabel("Delivery address")).toBeVisible();
+    await expect(page.getByLabel("Delivery area")).toBeVisible();
+    await expect(page.getByLabel("Street and house number")).toBeVisible();
     await page.getByLabel("Event type").selectOption("family");
     await page.getByLabel("Event date").fill(DATE);
     await page.getByRole("button", { name: "Save details" }).click();
     await expect(page.locator(".form-status")).toHaveText("Details saved.");
     await page.getByRole("link", { name: "Review", exact: true }).click();
-    await expect(page.locator(".missing")).toContainText("Enter a delivery address");
+    await expect(page.locator(".missing")).toContainText("Choose your delivery area");
+    await expect(page.locator(".missing")).toContainText("Enter a street and house number");
     await page.getByRole("link", { name: "Event", exact: true }).click();
     await page.getByLabel("Pickup", { exact: true }).check();
     await page.getByRole("button", { name: "Save details" }).click();
     await page.getByRole("link", { name: "Review", exact: true }).click();
-    await expect(page.locator(".missing")).not.toContainText("delivery address");
+    await expect(page.locator(".missing")).not.toContainText("delivery area");
+    await expect(page.locator(".missing")).not.toContainText("street");
+  });
+
+  test("time windows follow pickup or delivery, and choosing the other one clears the old window", async ({ page }) => {
+    await openPlanner(page, "#/plan/event");
+    const win = page.getByLabel("Time window");
+    await expect(win).toContainText("Choose pickup or delivery first");
+    await page.getByLabel("Pickup", { exact: true }).check();
+    await expect(win.locator("option")).toHaveText(["Choose a time window", "10:00 to 12:00", "12:00 to 14:00", "15:00 to 17:00"]);
+    await win.selectOption("12-14");
+    await page.getByLabel("Delivery", { exact: true }).check();
+    await expect(win.locator("option")).toHaveText(["Choose a time window", "09:00 to 11:00", "11:00 to 13:00", "14:00 to 16:00"]);
+    await expect(win).toHaveValue(""); // the pickup window does not carry over
+  });
+
+  test("the date rules: not today, not Shabbat, and a normal day is fine", async ({ page }) => {
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const now = new Date();
+    const saturday = new Date(now.getFullYear() + 1, 0, 1); // find a Saturday next year
+    while (saturday.getDay() !== 6) saturday.setDate(saturday.getDate() + 1);
+    await openPlanner(page, "#/plan/event");
+    const date = page.getByLabel("Event date");
+    const save = page.getByRole("button", { name: "Save details" });
+
+    await date.fill(iso(now));
+    await save.click();
+    await expect(page.locator("#event-date-error")).toHaveText("We need at least one day's notice. Choose a later date.");
+    await date.fill(iso(saturday));
+    await save.click();
+    await expect(page.locator("#event-date-error")).toHaveText("Pickup and delivery are closed on Shabbat and holidays. Choose another day.");
+    await date.fill(DATE);
+    await save.click();
+    await expect(page.locator(".form-status")).toHaveText("Details saved.");
+  });
+
+  test("a mobile number must look like one", async ({ page }) => {
+    await openPlanner(page, "#/plan/event");
+    await page.getByLabel("Mobile number").fill("12345");
+    await page.getByRole("button", { name: "Save details" }).click();
+    await expect(page.locator("#contact-phone-error")).toContainText("Enter an Israeli mobile number");
+    await page.getByLabel("Mobile number").fill("052 765 4321");
+    await page.getByRole("button", { name: "Save details" }).click();
+    await expect(page.locator(".form-status")).toHaveText("Details saved.");
   });
 
   test("dietary groups overlap: each is compared with the total, never added to it", async ({ page }) => {
@@ -177,7 +230,7 @@ test.describe("event and guest forms", () => {
     await page.keyboard.press("ArrowRight"); // radio group: pickup then delivery
     await page.getByLabel("Pickup", { exact: true }).focus();
     await page.keyboard.press("Space");
-    await page.getByLabel("Requested time").focus();
+    await page.getByLabel("Full name").focus();
     await page.keyboard.press("Enter"); // Enter in a text field submits the form
     await expect(page.locator(".form-status")).toHaveText("Details saved.");
     await page.getByRole("link", { name: "Review", exact: true }).click();

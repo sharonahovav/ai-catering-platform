@@ -48,6 +48,7 @@ let booted = false;
 let sceneSynced = false;
 let ui = {}; // mounted components
 let eventTypes = [];
+let settings = null; // fulfillment settings: delivery areas and fees, time windows, notice, closed days
 const formDrafts = { event: null, guests: null }; // unsaved form input survives navigating away until it is saved
 let pageForm = null;
 let renderedPage = null;
@@ -92,9 +93,9 @@ function renderPage() {
   if (route.name !== "review" && renderedPage === route.name) return;
   renderedPage = route.name;
   const locked = order.status !== "draft";
-  if (route.name === "event") pageForm = renderEventForm(els.panePage, { t, order, eventTypes, draft: formDrafts.event, locked, onSave: (patch) => saveDetails("event", patch), onDirty: (v) => (formDrafts.event = v) });
+  if (route.name === "event") pageForm = renderEventForm(els.panePage, { t, order, eventTypes, settings, draft: formDrafts.event, locked, onSave: (patch) => saveDetails("event", patch), onDirty: (v) => (formDrafts.event = v) });
   else if (route.name === "guests") pageForm = renderGuestsForm(els.panePage, { t, order, draft: formDrafts.guests, locked, onSave: (patch) => saveDetails("guests", patch), onDirty: (v) => (formDrafts.guests = v) });
-  else { pageForm = null; renderQuoteReview(els.panePage, { t, order, eventTypes, dishesById: dishes, submitting, submitError, onSubmit: submitRequest }); }
+  else { pageForm = null; renderQuoteReview(els.panePage, { t, order, eventTypes, settings, dishesById: dishes, submitting, submitError, onSubmit: submitRequest }); }
 }
 
 function render(prev) {
@@ -438,6 +439,7 @@ async function boot() {
     categories = await catalogService.getCategories();
     for (const c of categories) for (const d of await catalogService.getDishes(c.id)) dishes.set(d.id, d);
     eventTypes = await catalogService.getEventTypes();
+    settings = await catalogService.getFulfillmentSettings();
     await store.load();
   } catch {
     fill(els.main, h("p", { class: "error", role: "alert", style: "padding:2rem" }, t.errors.load));

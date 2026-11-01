@@ -345,3 +345,9 @@
 
 /* the dish image that flies to the summary after Add (cosmetic; removed when it lands) */
 .fly-clone { position: fixed; z-index: 300; pointer-events: none; object-fit: contain; filter: drop-shadow(0 18px 18px rgb(0 0 0 / 0.3)); transform-origin: center; will-change: transform; }
+
+/* grouped form sections ("About you", "Your event") */
+.form-group { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+.form-group > legend { font-family: var(--font-display); font-size: var(--text-h3); padding: 0; margin-block-end: var(--space-4); }
+.form-group > * + * { margin-block-start: var(--space-5); }
+

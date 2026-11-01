@@ -1,6 +1,6 @@
 // The only module the UI uses to read the catalog. Gate 3 swaps the mock import for fetch() calls to
 // GET /api/catalog/* without touching components.
-import { CATEGORIES, DISHES, EVENT_TYPES, source } from "./mock/catalog.mock.js";
+import { CATEGORIES, DISHES, EVENT_TYPES, FULFILLMENT, source } from "./mock/catalog.mock.js";
 
 const clone = (v) => structuredClone(v);
 const tick = () => Promise.resolve();
@@ -14,6 +14,11 @@ export const catalogService = {
   async getDishes(categoryId) {
     await tick();
     return clone(DISHES.filter((d) => d.categoryId === categoryId));
+  },
+  /** GET /api/settings/fulfillment: cities and fees, time windows, notice, closed days. */
+  async getFulfillmentSettings() {
+    await tick();
+    return clone(FULFILLMENT);
   },
   async getEventTypes() {
     await tick();
