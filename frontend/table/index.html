@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Infinite Table, Gate 1 (mock data only). dir/lang are set here so a Hebrew build only changes these + strings. -->
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F6F2EB">
+  <title>Plan your gathering · Demo</title>
+  <link rel="stylesheet" href="../css/table/tokens.css">
+  <link rel="stylesheet" href="../css/table/base.css">
+  <link rel="stylesheet" href="../css/table/layout.css">
+  <link rel="stylesheet" href="../css/table/components.css">
+  <link rel="stylesheet" href="../css/table/motion.css">
+  <link rel="stylesheet" href="../css/table/responsive.css">
+  <script type="module" src="../js/table/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main" id="skip-link"></a>
+
+  <div class="app" id="app">
+    <header class="topbar" id="topbar"></header>
+    <section class="mock-banner" id="mock-banner" aria-label="Demo data notice"></section>
+    <nav class="rail" id="rail"></nav>
+
+    <main class="stage" id="main" tabindex="-1" data-view="overview">
+      <h1 class="vh" id="page-title"></h1>
+      <section class="pane pane-overview" id="pane-overview" aria-labelledby="overview-title"></section>
+      <section class="pane pane-category" id="pane-category" aria-labelledby="category-title" inert></section>
+      <section class="pane pane-page" id="pane-page" aria-labelledby="page-heading" inert></section>
+      <div class="explore" id="explore" hidden></div>
+    </main>
+
+    <aside class="summary" id="summary" aria-labelledby="summary-title"></aside>
+  </div>
+
+  <dialog class="dish-dialog" id="dish-dialog" aria-labelledby="dish-title"></dialog>
+
+  <div id="announce" class="vh" role="status" aria-live="polite" aria-atomic="true"></div>
+  <noscript><p class="noscript">This planner needs JavaScript to run.</p></noscript>
+</body>
+</html>

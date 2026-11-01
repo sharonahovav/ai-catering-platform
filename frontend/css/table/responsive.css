@@ -1,0 +1,101 @@
+/* >= 1200: full layout (default). 900-1199: narrower rail/summary. < 900: single column, bottom nav, summary sheet. */
+@media (max-width: 1199px) {
+  .app { --rail-w: 4.5rem; --summary-w: 17rem; }
+  .dish-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 899px) {
+  .app {
+    --rail-w: 0px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(var(--topbar-h), auto) auto minmax(0, 1fr) auto;
+    grid-template-areas: "top" "banner" "stage" "rail";
+  }
+  /* Keyboard focus and anchors never scroll underneath the sticky top bar / bottom nav (WCAG 2.4.11). */
+  html { scroll-padding-block: 5rem 6rem; }
+  .topbar { padding: var(--space-2) var(--space-4); gap: var(--space-2) var(--space-3); flex-wrap: wrap; }
+  .brand, .crumbs, .table-toggle { white-space: normal; }
+  .topbar .crumbs { margin-inline: 0; min-inline-size: 0; }
+  .crumbs li:not(:last-child) { display: none; }
+  .crumbs li + li::before { content: none; }
+  .crumbs li:only-child { display: none; } /* overview: the toggle already says "Your table" */
+  .brand { font-size: 1.25rem; }
+  .table-toggle { padding-inline: var(--space-3); }
+  .topbar .actions { margin-inline-start: auto; }
+  .topbar .review-btn { display: none; }
+  .table-toggle { display: inline-flex; }
+
+  /* Sticky (not fixed) so it can grow and wrap when the user enlarges text, without hiding content. */
+  .rail {
+    position: sticky; inset-block-end: 0; z-index: 30;
+    flex-direction: row; flex-wrap: wrap; justify-content: space-around;
+    padding: var(--space-1) var(--space-2) max(var(--space-1), env(safe-area-inset-bottom));
+    border-inline-end: 0; border-block-start: 1px solid var(--color-line);
+  }
+  .rail.is-tall { position: static; } /* set by main.js when enlarged text makes the bar too big to pin */
+  .rail-btn { inline-size: auto; flex: 1 1 3.5rem; min-inline-size: 3.5rem; }
+  /* keep "Soon" in the accessible name (WCAG 2.5.3) while hiding it visually on the narrow bottom bar */
+  .rail-btn .soon { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  .stage { min-height: 0; overflow: visible; }
+  /* Overview becomes a normal scrolling page: stacked intro, then a 2-column grid of labelled categories. */
+  .pane-overview { position: relative; inset: auto; overflow: visible; padding: var(--space-5) var(--space-4) var(--space-6); }
+  .stage[data-view="category"] .pane-overview { display: none; }
+  .stage[data-view="overview"] .pane-category { display: none; }
+  .pane-category { position: relative; inset: auto; }
+  .pane-page { position: relative; inset: auto; padding: 4.5rem var(--space-4) var(--space-6); }
+  .stage[data-view="page"] .pane-overview, .stage[data-view="page"] .pane-category { display: none; }
+  .stage:not([data-view="page"]) .pane-page { display: none; }
+  .review-section dl { grid-template-columns: 1fr; gap: 0 var(--space-4); }
+  .review-section dd { margin-block-end: var(--space-2); }
+  .intro { position: static; max-inline-size: none; margin-block-end: var(--space-5); }
+  .intro p.lead { max-inline-size: 32rem; }
+  .intro .display { font-size: clamp(2.25rem, 9cqi, 3.25rem); }
+  .category-nav { display: none; } /* the labelled category buttons below are the list */
+  .nodes { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-3); }
+  .node { position: relative; inset: auto !important; inline-size: auto !important; block-size: auto !important; aspect-ratio: 1; margin-block-end: var(--space-4); }
+  .node:nth-child(even) { margin-block-start: var(--space-5); }
+  .backdrop, .frontdrop { display: none; }
+  /* Phones: no camera, no satellites, no free exploration. The stacked layout and sheets are the experience. */
+  .world { position: static; transform: none !important; transition: none !important; }
+  .sats, .explore { display: none !important; }
+
+  .focus-inner { padding: 5rem var(--space-4) var(--space-6); }
+  .focus-head { flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+  .dish-grid { gap: var(--space-3); }
+  .back-link { inset-block-start: var(--space-4); inset-inline-start: var(--space-4); }
+
+  /* Summary: bottom sheet toggled from the top bar; inert while closed (set in JS). */
+  .summary {
+    position: fixed; inset-inline: 0; inset-block: var(--topbar-h) 0; z-index: 40;
+    border-inline-start: 0; box-shadow: 0 -20px 60px rgb(0 0 0 / 0.2);
+    transform: translateY(105%); visibility: hidden;
+    transition: transform var(--motion-ui) var(--motion-ease), visibility 0s linear var(--motion-ui);
+  }
+  .summary[data-open="true"] { transform: none; visibility: visible; transition-delay: 0s; }
+  .sheet-close { display: inline-flex; align-self: flex-end; }
+}
+
+@media (max-width: 599px) {
+  .dish-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dish-art { block-size: 8.5rem; }
+  .dish-info { padding: var(--space-3); }
+  .dish-info h3 { font-size: 1.125rem; }
+  .dish-info .btn { padding-inline: var(--space-3); font-size: var(--text-meta); }
+  /* Dish detail is a full-screen sheet on phones. */
+  .dish-dialog { inline-size: 100%; border-radius: 0; }
+}
+
+@media (max-width: 380px) {
+  .dish-grid { grid-template-columns: minmax(0, 1fr); } /* 320px / 200% zoom: one column */
+  .dish-art { block-size: 11rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summary { transition: none; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage { min-height: 28rem; }
+  .intro .display { font-size: 2.25rem; }
+}
