@@ -17,16 +17,25 @@ import { mountDishDialog } from "./components/DishDialog.js";
 import { mountSummary } from "./components/OrderSummary.js";
 import { mountScene } from "./components/Scene.js";
 import { mountExploreControls } from "./components/ExploreControls.js";
+import { renderEventForm } from "./components/EventForm.js";
+import { renderGuestsForm } from "./components/GuestsForm.js";
+import { renderQuoteReview } from "./components/QuoteReview.js";
+import { mountAssistant } from "./components/AssistantPanel.js";
+import { proposalStatus } from "./state/proposal.js";
 
 const $ = (id) => document.getElementById(id);
 const els = {
   topbar: $("topbar"), banner: $("mock-banner"), rail: $("rail"), main: $("main"),
-  paneOverview: $("pane-overview"), explore: $("explore"), paneCategory: $("pane-category"), summary: $("summary"), dialog: $("dish-dialog"),
+  paneOverview: $("pane-overview"), explore: $("explore"), paneCategory: $("pane-category"), panePage: $("pane-page"), summary: $("summary"), dialog: $("dish-dialog"),
 };
 const mobile = window.matchMedia("(max-width: 899px)");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 // Dev affordance for exercising the error path: /table/?mockFail makes the first add fail once.
-const store = createOrderStore(createOrdersService({ failNextCall: new URLSearchParams(location.search).has("mockFail") }));
+const params = new URLSearchParams(location.search);
+const store = createOrderStore(createOrdersService({ failNextCall: params.has("mockFail"), failNextProposal: params.has("mockAiFail") }));
+const PAGE_ROUTES = ["event", "guests", "review"];
+const isPageRoute = (route) => PAGE_ROUTES.includes(route.name);
 
 let state = initialState();
 let categories = [];
@@ -38,6 +47,15 @@ let justAdded = null;
 let booted = false;
 let sceneSynced = false;
 let ui = {}; // mounted components
+let eventTypes = [];
+const formDrafts = { event: null, guests: null }; // unsaved form input survives navigating away until it is saved
+let pageForm = null;
+let renderedPage = null;
+let submitting = false;
+let submitError = null;
+let submitRequestId = null;
+let assistantBusy = null;
+let assistantNotice = null;
 
 /* ---------------- state + render ---------------- */
 
@@ -52,6 +70,7 @@ function crumbsFor(route) {
   const category = categories.find((c) => c.id === route.categoryId);
   if (category) crumbs.push({ label: category.name, hash: buildHash({ name: "category", categoryId: category.id }) });
   if (route.name === "dish") crumbs.push({ label: dishes.get(route.dishId)?.name ?? "" });
+  if (isPageRoute(route)) crumbs.push({ label: t.nav[route.name] });
   return crumbs;
 }
 
@@ -60,6 +79,22 @@ function renderOrderViews() {
   if (!order) return;
   ui.summary.update({ order, dishesById: dishes, justAdded });
   ui.topbar.update({ crumbs: crumbsFor(state.route), count: order.items.length, summaryOpen: state.summaryOpen });
+  const proposal = store.getProposal();
+  ui.assistant.update({ order, proposal, status: proposalStatus(proposal, order), busy: assistantBusy, notice: assistantNotice });
+  renderPage();
+}
+
+/** Forms render when the route changes (so typing is never wiped by an unrelated update); the review page is read-only, so it follows every change. */
+function renderPage() {
+  const route = state.route;
+  const order = store.getOrder();
+  if (!isPageRoute(route) || !order) { renderedPage = null; pageForm = null; return; }
+  if (route.name !== "review" && renderedPage === route.name) return;
+  renderedPage = route.name;
+  const locked = order.status !== "draft";
+  if (route.name === "event") pageForm = renderEventForm(els.panePage, { t, order, eventTypes, draft: formDrafts.event, locked, onSave: (patch) => saveDetails("event", patch), onDirty: (v) => (formDrafts.event = v) });
+  else if (route.name === "guests") pageForm = renderGuestsForm(els.panePage, { t, order, draft: formDrafts.guests, locked, onSave: (patch) => saveDetails("guests", patch), onDirty: (v) => (formDrafts.guests = v) });
+  else { pageForm = null; renderQuoteReview(els.panePage, { t, order, eventTypes, dishesById: dishes, submitting, submitError, onSubmit: submitRequest }); }
 }
 
 function render(prev) {
@@ -67,15 +102,18 @@ function render(prev) {
   const inMenu = route.name === "category" || route.name === "dish";
 
   // Zoom state is a data attribute; CSS does the (optional) motion. Inactive pane is inert immediately.
-  els.main.dataset.view = inMenu ? "category" : "overview";
+  const isPage = isPageRoute(route);
+  els.main.dataset.view = inMenu ? "category" : isPage ? "page" : "overview";
+  els.main.dataset.cat = inMenu ? route.categoryId : ""; // each category gets its own backdrop (CSS)
   els.main.dataset.level = route.name; // overview | category | dish: lets CSS clear the side panel for the dish close-up
   // Desktop: the scene stays live (pointer) behind the category panel; only the hero and text strip go inert.
   // Phones: the panes swap, so the inactive one is inert.
   const compact = mobile.matches;
-  els.paneOverview.inert = inMenu && compact;
-  ui.overview.intro.inert = inMenu;
-  ui.overview.strip.inert = inMenu;
+  els.paneOverview.inert = (inMenu && compact) || isPage;
+  ui.overview.intro.inert = inMenu || isPage;
+  ui.overview.strip.inert = inMenu || isPage;
   els.paneCategory.inert = !inMenu;
+  els.panePage.inert = !isPage;
   if (inMenu && renderedCategoryId !== route.categoryId) {
     const category = categories.find((c) => c.id === route.categoryId);
     categoryHeading = renderCategory(els.paneCategory, { t, category, categories, dishes: [...dishes.values()].filter((d) => d.categoryId === category.id) });
@@ -86,9 +124,9 @@ function render(prev) {
   if (!sceneSynced) ui.scene.relayout();
   if (!sceneSynced || !sameRoute(prev.route, route)) ui.scene.setLevel(route, { animate: booted && sceneSynced });
   sceneSynced = true;
-  const exploreOn = state.explore && !compact;
+  const exploreOn = state.explore && !compact && !isPage;
   ui.scene.setExplore(exploreOn);
-  ui.explore.update({ on: exploreOn, available: !compact });
+  ui.explore.update({ on: exploreOn, available: !compact && !isPage });
 
   ui.rail.update(route);
   renderOrderViews();
@@ -118,6 +156,8 @@ function moveFocus(from, to) {
     const run = focusOverride;
     focusOverride = null;
     run();
+  } else if (isPageRoute(to)) {
+    document.getElementById("page-heading")?.focus({ preventScroll: true });
   } else if (to.name === "category") {
     const card = from.name === "dish" && from.categoryId === to.categoryId ? els.paneCategory.querySelector(`[data-dish-id="${CSS.escape(from.dishId)}"]`) : null;
     (card ?? categoryHeading).focus({ preventScroll: true });
@@ -147,7 +187,7 @@ function resolve(route) {
     case "event":
     case "guests":
     case "review":
-      return { route: OVERVIEW, notice: t.announce.comingSoon };
+      return { route };
     default:
       return { route: OVERVIEW, notice: t.announce.notFound };
   }
@@ -198,7 +238,10 @@ function onLocationChange() {
 
 const newRequestId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
 const errorText = (res) =>
-  ({ network_error: t.errors.network, busy: t.errors.busy, dish_unavailable: t.errors.unavailable, order_version_conflict: t.errors.conflict })[res.code] ?? res.message ?? t.errors.generic;
+  ({
+    network_error: t.errors.network, busy: t.errors.busy, dish_unavailable: t.errors.unavailable, order_version_conflict: t.errors.conflict,
+    order_not_editable: t.errors.notEditable, incomplete_order: t.errors.incomplete, validation_error: t.errors.quantity(res.details?.rule),
+  })[res.code] ?? t.errors.generic;
 
 function closeDish() {
   const r = state.route;
@@ -221,6 +264,31 @@ function focusSummaryRow(dishId) {
   if (mobile.matches) return ui.topbar.toggle.focus();
   const row = els.summary.querySelector(`[data-dish-id="${CSS.escape(dishId)}"]`);
   (row ?? ui.summary.title).focus();
+}
+
+/** Cosmetic only: the dish image travels from the sheet to its row in the summary. The order has already changed. */
+function flyToSummary(from, dish) {
+  if (!from?.width || reduceMotion.matches || mobile.matches) return;
+  const target = els.summary.querySelector(`[data-dish-id="${CSS.escape(dish.id)}"] img`)?.getBoundingClientRect();
+  if (!target?.width) return;
+  const clone = h("img", { class: "fly-clone", src: dish.image, alt: "", "aria-hidden": "true", draggable: "false" });
+  Object.assign(clone.style, { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px` });
+  document.body.append(clone);
+  const dx = target.left + target.width / 2 - (from.left + from.width / 2);
+  const dy = target.top + target.height / 2 - (from.top + from.height / 2);
+  const s = target.width / from.width;
+  const done = () => clone.remove();
+  try {
+    clone.animate(
+      [
+        { transform: "translate(0, 0) scale(1) rotate(0deg)", opacity: 1 },
+        { transform: `translate(${dx * 0.45}px, ${dy * 0.45 - 90}px) scale(${(1 + s) / 2 + 0.12}) rotate(-10deg)`, opacity: 1, offset: 0.5 },
+        { transform: `translate(${dx}px, ${dy}px) scale(${s}) rotate(0deg)`, opacity: 0.85 },
+      ],
+      { duration: 760, easing: "cubic-bezier(0.22, 0.8, 0.2, 1)" },
+    ).finished.then(done, done);
+  } catch { done(); }
+  setTimeout(done, 1200); // belt and braces: it can never be left on screen
 }
 
 async function onAdd() {
@@ -249,9 +317,11 @@ async function onAdd() {
   }, 1000);
 
   if (!stillHere) return void dispatch({ type: "SET_NOTICE", kind: "added", text }); // person navigated away mid-save
+  const fromRect = els.dialog.querySelector(".dish-visual img")?.getBoundingClientRect(); // where the dish "leaves" from
   focusOverride = () => focusSummaryRow(dish.id);
   dispatch({ type: "ADD_SUCCESS", text });
   commitRoute(OVERVIEW, "replace"); // replace the dish entry so Back goes to the category, never to a stale sheet
+  flyToSummary(fromRect, dish);
 }
 
 async function onRemove(dishId) {
@@ -262,6 +332,95 @@ async function onRemove(dishId) {
   const buttons = [...els.summary.querySelectorAll(".order-item .remove")];
   (buttons[index] ?? buttons[index - 1] ?? ui.summary.title).focus();
   dispatch({ type: "SET_NOTICE", kind: "info", text: t.announce.removed(name, res.order.items.length) });
+}
+
+async function saveDetails(kind, patch) {
+  const form = pageForm;
+  form.setSaving(true);
+  const res = await store.updateDetails(patch, newRequestId());
+  if (pageForm !== form) return void (res.ok && (formDrafts[kind] = null)); // navigated away mid-save
+  form.setSaving(false);
+  if (res.ok) {
+    formDrafts[kind] = null;
+    form.saved();
+    dispatch({ type: "SET_NOTICE", kind: "info", text: t.form.saved });
+  } else if (res.code === "validation_error") {
+    form.showErrors(res.details?.fields);
+  } else {
+    if (res.code === "order_not_editable") renderedPage = null; // re-render the page as read-only
+    dispatch({ type: "SET_NOTICE", kind: "error", text: res.code === "network_error" ? t.errors.detailsFailed : errorText(res) });
+    renderPage();
+  }
+}
+
+async function submitRequest() {
+  if (submitting) return;
+  submitting = true;
+  submitError = null;
+  submitRequestId ??= newRequestId(); // a retry after a network failure re-sends the same key
+  renderPage();
+  const res = await store.submit(submitRequestId);
+  submitting = false;
+  if (res.ok) {
+    submitRequestId = null;
+    dispatch({ type: "SET_NOTICE", kind: "info", text: t.check.announceSent });
+    renderPage();
+    document.getElementById("page-heading")?.focus({ preventScroll: true });
+    return;
+  }
+  if (res.code !== "network_error") submitRequestId = null;
+  submitError = res.code === "network_error" ? t.errors.submitFailed : errorText(res);
+  renderPage();
+}
+
+async function onSuggest() {
+  assistantBusy = "asking";
+  assistantNotice = null;
+  renderOrderViews();
+  const res = await store.requestProposal();
+  assistantBusy = null;
+  if (res.ok) {
+    dispatch({ type: "SET_NOTICE", kind: "info", text: t.assistant.announceNew });
+    renderOrderViews();
+    document.getElementById("proposal-title")?.focus({ preventScroll: true });
+    return;
+  }
+  assistantNotice = res.code === "no_suggestion" ? t.assistant.nothing : res.code === "order_not_editable" ? t.assistant.locked : t.assistant.offline;
+  renderOrderViews(); // manual ordering is unaffected
+}
+
+async function onApprove() {
+  const p = store.getProposal();
+  if (!p) return;
+  assistantBusy = "applying";
+  renderOrderViews();
+  const res = await store.approveProposal(p.id);
+  assistantBusy = null;
+  if (res.ok) {
+    justAdded = p.dishId;
+    setTimeout(() => { justAdded = null; els.summary.querySelectorAll(".just-added").forEach((li) => li.classList.remove("just-added")); }, 1000);
+    dispatch({ type: "SET_NOTICE", kind: "info", text: t.assistant.announceApproved(p.dishName) });
+  } else {
+    dispatch({ type: "SET_NOTICE", kind: "error", text: res.code === "network_error" ? t.errors.network : t.assistant.expiredText });
+  }
+  renderOrderViews();
+  document.getElementById("proposal-title")?.focus({ preventScroll: true });
+}
+
+async function onReject() {
+  const p = store.getProposal();
+  if (!p) return;
+  const res = await store.rejectProposal(p.id);
+  dispatch({ type: "SET_NOTICE", kind: "info", text: res.ok ? t.assistant.announceRejected : t.assistant.expiredText });
+  renderOrderViews();
+  document.getElementById("proposal-title")?.focus({ preventScroll: true });
+}
+
+function onDismiss() {
+  store.dismissProposal();
+  assistantNotice = null;
+  renderOrderViews();
+  els.summary.querySelector('[data-key="suggest"]')?.focus({ preventScroll: true });
 }
 
 /* ---------------- boot ---------------- */
@@ -278,6 +437,7 @@ async function boot() {
   try {
     categories = await catalogService.getCategories();
     for (const c of categories) for (const d of await catalogService.getDishes(c.id)) dishes.set(d.id, d);
+    eventTypes = await catalogService.getEventTypes();
     await store.load();
   } catch {
     fill(els.main, h("p", { class: "error", role: "alert", style: "padding:2rem" }, t.errors.load));
@@ -323,6 +483,7 @@ async function boot() {
     });
   }).observe(els.main);
   ui.summary = mountSummary(els.summary, { t, onRemove, onClose: () => dispatch({ type: "CLOSE_SUMMARY" }) });
+  ui.assistant = mountAssistant(ui.summary.assistantSlot, { t, onSuggest, onApprove, onReject, onDismiss });
   ui.dialog = mountDishDialog(els.dialog, { t, onClose: closeDish, onStep, onAdd });
   store.subscribe(renderOrderViews);
 

@@ -79,13 +79,13 @@
 
 /* ---------- overview ---------- */
 .intro .eyebrow { color: var(--color-rose); margin-block-end: var(--space-3); }
-.intro .display { font-size: clamp(2.5rem, min(5vw, 9.5vh), 5.5rem); line-height: 0.96; margin-block-end: var(--space-4); }
-.intro p.lead { font-size: var(--text-lead); color: var(--color-muted); max-inline-size: 18rem; }
+.intro .display { font-size: clamp(2rem, min(6cqi, 9.5vh), 5.5rem); line-height: 0.96; margin-block-end: var(--space-4); }
+.intro p.lead { font-size: var(--text-lead); color: var(--color-muted); max-inline-size: min(18rem, 30cqi); }
 .category-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .category-list a, .chip {
   display: inline-flex; align-items: center;
   min-block-size: var(--touch);
-  padding-inline: var(--space-4);
+  padding-inline: var(--space-3);
   border: 1px solid var(--color-control-border);
   border-radius: var(--radius-pill);
   background: var(--color-surface-raised);
@@ -98,10 +98,9 @@
 .node {
   display: flex; align-items: center; justify-content: center;
   padding: 0;
-  filter: drop-shadow(0 15px 12px rgb(80 56 48 / 0.14));
-  transition: transform var(--motion-ui) var(--motion-ease), filter var(--motion-ui), opacity var(--motion-ui);
+  transition: transform var(--motion-ui) var(--motion-ease), opacity var(--motion-ui);
 }
-.node:hover, .node:focus-visible, .node.is-linked { transform: translateY(-6px) scale(1.03); filter: drop-shadow(0 22px 18px rgb(80 56 48 / 0.2)); }
+.node:hover, .node:focus-visible, .node.is-linked { transform: translateY(-6px) scale(1.03); }
 .node .blob { position: absolute; inset: 5%; z-index: -1; border-radius: 50%; background: var(--color-sage); opacity: 0.6; filter: blur(25px); }
 .slot-1 .blob { background: #ECDCA9; }
 .slot-2 .blob { background: #E3B3D1; }
@@ -203,6 +202,7 @@
 
 /* ---------- satellites: dishes orbiting the focused category (pointer-only; the side list is the keyboard path) ---------- */
 .sats, .sat-group { position: absolute; inset: 0; pointer-events: none; }
+.sats { z-index: 5; } /* above the food objects (z 4), or a wide object would swallow clicks meant for its dishes */
 .sat {
   position: absolute; padding: 0; display: grid; place-items: center;
   border-radius: 50%;
@@ -252,3 +252,96 @@
   .hud .dish-info h3 { font-size: 1.125rem; }
   .hud .dish-info p, .hud .dish-card .tag:not(.tag-warn) { display: none; }
 }
+
+/* ---------- pages: forms ---------- */
+.page-head h2 { font-size: clamp(2.25rem, 5vw, 3.5rem); margin-block: var(--space-2); }
+.page-intro { color: var(--color-muted); max-inline-size: 36rem; }
+.form { display: grid; gap: var(--space-5); }
+.field { display: grid; gap: var(--space-2); border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+.field > label, .field > legend { font-weight: 650; padding: 0; }
+.req { font-weight: 400; color: var(--color-muted); }
+.field-help { font-size: var(--text-meta); color: var(--color-muted); }
+.field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
+  inline-size: 100%; min-block-size: var(--touch); padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-control-border); border-radius: 10px;
+  background: var(--color-surface-raised); color: var(--color-ink); font: inherit;
+}
+.field textarea { min-block-size: 6rem; resize: vertical; }
+.field [aria-invalid="true"] { border-color: var(--color-negative); border-width: 2px; }
+.field-error { color: var(--color-negative); font-weight: 600; font-size: var(--text-meta); }
+.field-error::before { content: "Problem: "; } /* a text cue, never colour alone */
+.field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-4); }
+.choices { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.choice { display: inline-flex; align-items: center; gap: var(--space-2); min-block-size: var(--touch); padding-inline: var(--space-3); border: 1px solid var(--color-control-border); border-radius: var(--radius-pill); background: var(--color-surface-raised); cursor: pointer; }
+.choice input { inline-size: 1.25rem; block-size: 1.25rem; accent-color: var(--color-ink); }
+.conditional[hidden] { display: none; }
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+.form-status { color: var(--color-muted); font-size: var(--text-meta); }
+.guest-total { font-weight: 650; }
+.locked-note { padding: var(--space-3) var(--space-4); border: 1px solid var(--color-line); border-radius: 12px; background: var(--color-surface-raised); }
+.error-summary { border: 2px solid var(--color-negative); border-radius: 12px; padding: var(--space-3) var(--space-4); background: var(--color-surface-raised); }
+.error-summary h3 { font-size: var(--text-lead); font-family: var(--font-body); font-weight: 700; letter-spacing: 0; }
+.error-summary ul { margin-block-start: var(--space-2); display: grid; gap: var(--space-1); }
+.link-btn { text-decoration: underline; text-align: start; color: var(--color-ink); min-block-size: var(--touch); }
+
+/* ---------- pages: review ---------- */
+.status-banner { padding: var(--space-4); border-radius: 14px; border: 1px solid var(--color-line); background: var(--color-surface-raised); display: grid; gap: var(--space-1); }
+.status-banner[data-state="pending"] { background: var(--color-blush); border-inline-start: 6px solid var(--color-aubergine); }
+.status-title { font-weight: 700; font-size: var(--text-lead); }
+.review-section { display: grid; gap: var(--space-2); padding-block-end: var(--space-4); border-block-end: 1px solid var(--color-line); }
+.review-section h3 { font-size: var(--text-h3); }
+.review-section dl { display: grid; grid-template-columns: minmax(8rem, max-content) 1fr; gap: var(--space-2) var(--space-4); }
+.review-section dt { color: var(--color-muted); }
+.review-section dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.review-list { display: grid; gap: var(--space-2); }
+.review-list li { display: flex; justify-content: space-between; gap: var(--space-4); }
+.edit-link { justify-self: start; display: inline-flex; align-items: center; min-block-size: var(--touch); }
+.missing { border: 2px solid var(--color-aubergine); border-radius: 14px; padding: var(--space-3) var(--space-4); background: var(--color-surface-raised); }
+.missing h3 { font-size: var(--text-lead); font-family: var(--font-body); font-weight: 700; letter-spacing: 0; }
+.missing ul { margin-block-start: var(--space-2); list-style: disc; padding-inline-start: var(--space-5); display: grid; gap: var(--space-1); }
+.missing a { display: inline-flex; align-items: center; min-block-size: var(--touch); }
+.price-line { font-family: var(--font-display); font-size: var(--text-lead); font-weight: 700; }
+.submit-area { display: grid; gap: var(--space-3); justify-items: start; }
+
+/* ---------- the table guide (scripted AI) ---------- */
+.assistant { display: grid; gap: var(--space-3); padding-block-start: var(--space-4); border-block-start: 1px solid var(--color-line); }
+.assistant-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.assistant-head h3 { font-size: var(--text-h3); }
+.proposal { display: grid; gap: var(--space-3); padding: var(--space-3); border: 2px solid var(--color-aubergine); border-radius: 14px; background: var(--color-surface); }
+.proposal h4 { font-family: var(--font-body); font-size: var(--text-body); font-weight: 700; letter-spacing: 0; }
+.proposal.done { border-color: var(--color-line); }
+.proposal dl { display: grid; grid-template-columns: 1fr; gap: var(--space-1); }
+.proposal dt { font-weight: 700; }
+.proposal dd { margin: 0; }
+.proposal .after { font-weight: 700; }
+.decision { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.decision .btn { flex: 1 1 8rem; }
+
+/* ---------- depth props (parallax is driven by the camera, not the pointer) ---------- */
+.backdrop, .frontdrop { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.backdrop { z-index: 0; }
+.frontdrop { z-index: 6; }
+.prop {
+  position: absolute; block-size: auto; opacity: 0.92;
+  filter: drop-shadow(0 12px 10px rgb(60 40 40 / 0.2));
+  transform:
+    translate(calc(var(--cam-x, 0px) * var(--d)), calc(var(--cam-y, 0px) * var(--d)))
+    scale(min(calc(1 + (var(--cam-k, 1) - 1) * var(--d)), 2.3))
+    rotate(var(--r, 0deg));
+}
+.is-cam-animated .prop { transition: transform var(--motion-zoom) var(--motion-ease); }
+.stage[data-view="category"] .backdrop .prop { opacity: 0.5; }
+.stage[data-view="category"] .frontdrop .prop { opacity: 0.8; }
+
+/* ---------- entrance, ambient drift, and the dish's close-up ---------- */
+@keyframes node-in { from { opacity: 0; translate: 0 36px; scale: 0.82; } }
+@keyframes drift { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -9px; rotate: 1.4deg; } }
+@keyframes plate-in { from { opacity: 0; scale: 0.78; rotate: -8deg; } }
+.node { animation: node-in 850ms var(--motion-ease) both; animation-delay: calc(var(--i, 0) * 110ms + 120ms); }
+.node img { filter: drop-shadow(0 15px 12px rgb(80 56 48 / 0.16)); will-change: translate; animation: drift 9s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -1.9s); }
+.stage[data-view="category"] .node img, .is-dragging .node img { animation-play-state: paused; }
+.dish-visual img { animation: plate-in 700ms var(--motion-ease) both; }
+.sat-group.is-active .sat { transition-delay: calc(var(--i, 0) * 70ms); }
+
+/* the dish image that flies to the summary after Add (cosmetic; removed when it lands) */
+.fly-clone { position: fixed; z-index: 300; pointer-events: none; object-fit: contain; filter: drop-shadow(0 18px 18px rgb(0 0 0 / 0.3)); transform-origin: center; will-change: transform; }

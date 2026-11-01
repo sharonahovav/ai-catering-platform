@@ -13,7 +13,7 @@ export function dishCard(dish, categoryId, t) {
         { class: "dish-info" },
         h("h3", null, dish.name),
         dish.description && h("p", null, dish.description),
-        h("div", { class: "tags" }, h("span", { class: "tag" }, t.category.demoTag), !dish.available && h("span", { class: "tag tag-warn" }, t.category.unavailable)),
+        h("div", { class: "tags" }, h("span", { class: "tag" }, t.category.demoTag), !dish.available && h("span", { class: "tag tag-warn" }, t.category.unavailable), dish.alcohol && h("span", { class: "tag tag-warn" }, t.category.alcoholTag)),
         h(
           "button",
           { class: "btn btn-ghost", type: "button", "data-route": `#/plan/menu/${categoryId}/dish/${dish.id}`, "data-dish-id": dish.id, "aria-label": t.category.explore(dish.name) },

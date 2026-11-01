@@ -4,21 +4,22 @@ import { icon } from "./icons.js";
 export function mountRail(root, { t, firstCategoryId }) {
   root.setAttribute("aria-label", t.nav.label);
   const link = (key, href) => h("a", { class: "rail-btn", href, "data-nav": key }, icon(key), h("span", null, t.nav[key]));
-  // Event/Guests/Review are Gate 2: visible, labelled, and clearly not available (not hidden, not a dead link).
-  const soon = (key) =>
-    h("button", { class: "rail-btn", type: "button", "aria-disabled": "true" }, icon(key), h("span", null, t.nav[key]), h("span", { class: "soon" }, t.nav.soon));
 
   const table = link("table", "#/plan");
   const menu = link("menu", `#/plan/menu/${firstCategoryId}`);
-  fill(root, table, menu, soon("event"), soon("guests"), soon("review"));
+  const event = link("event", "#/plan/event");
+  const guests = link("guests", "#/plan/guests");
+  const review = link("review", "#/plan/review");
+  fill(root, table, menu, event, guests, review);
+  const current = { table, menu, event, guests, review };
 
   return {
     update(route) {
-      const inMenu = route.name === "category" || route.name === "dish";
-      table.toggleAttribute("aria-current", route.name === "overview");
-      if (route.name === "overview") table.setAttribute("aria-current", "page");
-      menu.toggleAttribute("aria-current", inMenu);
-      if (inMenu) menu.setAttribute("aria-current", "page");
+      const active = route.name === "overview" ? "table" : route.name === "category" || route.name === "dish" ? "menu" : route.name;
+      for (const [key, el] of Object.entries(current)) {
+        if (key === active) el.setAttribute("aria-current", "page");
+        else el.removeAttribute("aria-current");
+      }
     },
   };
 }

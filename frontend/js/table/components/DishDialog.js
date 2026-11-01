@@ -43,7 +43,10 @@ export function mountDishDialog(dialog, { t, onClose, onStep, onAdd }) {
           h("dd", null, t.dish.dietaryValue),
           h("dt", null, t.dish.availability),
           h("dd", null, dish.available ? t.dish.availableDemo : t.dish.unavailable),
+          dish.alcohol && h("dt", null, t.dish.alcohol),
+          dish.alcohol && h("dd", null, t.dish.alcoholValue),
         ),
+        dish.alcohol && h("p", { class: "hint" }, t.dish.alcoholNote),
         h(
           "div",
           { class: "qty" },

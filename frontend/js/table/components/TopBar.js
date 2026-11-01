@@ -8,8 +8,7 @@ export function mountTopBar(root, { t, onToggleSummary }) {
     { class: "btn btn-ghost table-toggle", type: "button", "aria-controls": "summary", "aria-expanded": "false", onclick: () => onToggleSummary() },
     count,
   );
-  // Review/quote arrives in Gate 2; the control is present but honestly disabled.
-  const review = h("button", { class: "btn btn-primary review-btn", type: "button", "aria-disabled": "true", "aria-label": `${t.review.button} (coming soon)` }, t.review.button);
+  const review = h("a", { class: "btn btn-primary review-btn", href: "#/plan/review" }, t.review.button);
 
   fill(
     root,

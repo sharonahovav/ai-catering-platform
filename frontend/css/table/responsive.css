@@ -43,12 +43,19 @@
   .stage[data-view="category"] .pane-overview { display: none; }
   .stage[data-view="overview"] .pane-category { display: none; }
   .pane-category { position: relative; inset: auto; }
+  .pane-page { position: relative; inset: auto; padding: 4.5rem var(--space-4) var(--space-6); }
+  .stage[data-view="page"] .pane-overview, .stage[data-view="page"] .pane-category { display: none; }
+  .stage:not([data-view="page"]) .pane-page { display: none; }
+  .review-section dl { grid-template-columns: 1fr; gap: 0 var(--space-4); }
+  .review-section dd { margin-block-end: var(--space-2); }
   .intro { position: static; max-inline-size: none; margin-block-end: var(--space-5); }
+  .intro p.lead { max-inline-size: 32rem; }
+  .intro .display { font-size: clamp(2.25rem, 9cqi, 3.25rem); }
   .category-nav { display: none; } /* the labelled category buttons below are the list */
   .nodes { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-3); }
   .node { position: relative; inset: auto !important; inline-size: auto !important; block-size: auto !important; aspect-ratio: 1; margin-block-end: var(--space-4); }
   .node:nth-child(even) { margin-block-start: var(--space-5); }
-  .float { display: none; }
+  .backdrop, .frontdrop { display: none; }
   /* Phones: no camera, no satellites, no free exploration. The stacked layout and sheets are the experience. */
   .world { position: static; transform: none !important; transition: none !important; }
   .sats, .explore { display: none !important; }

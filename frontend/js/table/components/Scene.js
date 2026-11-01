@@ -56,7 +56,7 @@ export function mountScene({ stage, world, nodesEl, categories, dishesByCategory
       dishes.forEach((d, i) => {
         sats.set(d.id, { ...items[i], size });
         const el = satEls.get(`${c.id}/${d.id}`);
-        el.style.cssText = `left:${items[i].cx - size / 2}px;top:${items[i].cy - size / 2}px;width:${size}px;height:${size}px`;
+        el.style.cssText = `--i:${i};left:${items[i].cx - size / 2}px;top:${items[i].cy - size / 2}px;width:${size}px;height:${size}px`;
       });
       model.set(c.id, { ring: { x: center.cx - ringRadius, y: center.cy - ringRadius, width: ringRadius * 2, height: ringRadius * 2 }, sats });
     }
@@ -68,9 +68,14 @@ export function mountScene({ stage, world, nodesEl, categories, dishesByCategory
     world.classList.toggle("is-animated", animate);
     world.style.transform = compactQuery.matches ? "" : toTransform(next);
     world.style.setProperty("--cam-scale", next.scale.toFixed(4)); // lets labels cancel the zoom (see .sat-label)
+    // The same camera drives the prop layers at their own depth (see .prop): parallax comes from the camera, never from the pointer.
+    stage.style.setProperty("--cam-x", `${next.x.toFixed(1)}px`);
+    stage.style.setProperty("--cam-y", `${next.y.toFixed(1)}px`);
+    stage.style.setProperty("--cam-k", next.scale.toFixed(4));
+    stage.classList.toggle("is-cam-animated", animate);
     clearTimeout(settleTimer);
     // Drop will-change after the move so text re-rasterises crisply at the final scale.
-    if (animate) settleTimer = setTimeout(() => world.classList.remove("is-animated"), 900);
+    if (animate) settleTimer = setTimeout(() => { world.classList.remove("is-animated"); stage.classList.remove("is-cam-animated"); }, 900);
   }
 
   function regionFor(kind) {
@@ -82,7 +87,7 @@ export function mountScene({ stage, world, nodesEl, categories, dishesByCategory
     }
     const hud = stage.querySelector(".hud");
     const left = hud ? Math.max(0, hud.getBoundingClientRect().right - sr.left) + 16 : 0;
-    return { x: left, y: 56, width: Math.max(200, v.width - left - 16), height: v.height - 72 };
+    return { x: left, y: 56, width: Math.max(200, v.width - left - 16), height: v.height - 72 - 36 }; // the last 36px is for the labels under the dishes
   }
 
   function levelTarget() {

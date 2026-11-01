@@ -20,20 +20,38 @@
 .summary { grid-area: summary; }
 
 .stage {
+  container-type: inline-size; /* lets the hero size itself from the stage, not the window (the side rails take a different share at each width) */
   position: relative;
   min-width: 0;
   min-height: 36rem;
   overflow: hidden;
-  background: radial-gradient(ellipse at 53% 46%, #F7E2DF 0, var(--color-surface) 44%, var(--color-bg) 78%);
+  --scene-a: #F7E2DF; --scene-b: #F1E8DD;
+  background: radial-gradient(ellipse at 55% 45%, var(--scene-a) 0%, var(--scene-b) 92%);
+  transition: --scene-a var(--motion-zoom) ease, --scene-b var(--motion-zoom) ease;
 }
 
 .pane {
+  z-index: 1;
   position: absolute;
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
   transform-origin: var(--zoom-x, 50%) var(--zoom-y, 45%);
 }
+
+/* Per-category backdrops. Registered as colours so the change between categories cross-fades instead of snapping. */
+@property --scene-a { syntax: "<color>"; inherits: true; initial-value: #F7E2DF; }
+@property --scene-b { syntax: "<color>"; inherits: true; initial-value: #F1E8DD; }
+.stage[data-cat="salads"] { --scene-a: #6E9C77; --scene-b: #1F3B2C; }
+.stage[data-cat="hors_doeuvres"] { --scene-a: #C97B5A; --scene-b: #4A2420; }
+.stage[data-cat="mains"] { --scene-a: #8E5A86; --scene-b: #2F1D3A; }
+.stage[data-cat="sides"] { --scene-a: #C2A24A; --scene-b: #4B4219; }
+.stage[data-cat="sweets"] { --scene-a: #E79AB3; --scene-b: #6A2A47; }
+.stage[data-cat="soft_drinks"] { --scene-a: #5FB6B8; --scene-b: #174449; }
+.stage[data-cat="wine_cocktails"] { --scene-a: #B04A63; --scene-b: #3A0F1E; }
+
+.pane-category { z-index: 2; }
+.pane-page { z-index: 3; }
 
 /* ---------- scene camera ---------- */
 /* .world is everything that is part of the picture; the camera moves it with a transform (see Scene.js). */
@@ -44,24 +62,22 @@
   position: absolute;
   z-index: 3;
   inset-inline-start: 5%;
-  inset-block-start: 15%;
-  max-inline-size: 24rem;
+  inset-block-start: 22%;
+  max-inline-size: 38cqi; /* never wider than the space left of the Salads object, at any stage width */
   pointer-events: none;
 }
-.category-nav { position: absolute; z-index: 5; inset-block-start: var(--space-5); inset-inline: 5%; }
+.category-nav { position: absolute; z-index: 5; inset-block-start: var(--space-4); inset-inline-start: 5%; inset-inline-end: 11.5rem; } /* stops short of "Explore freely" */
 
 .nodes { position: absolute; inset: 0; }
 .node { position: absolute; z-index: 4; }
-.slot-0 { inset-inline-start: 46%; inset-block-start: 28%; inline-size: 22%; block-size: 27%; }
-.slot-1 { inset-inline-start: 6%;  inset-block-start: 55%; inline-size: 20%; block-size: 20%; }
-.slot-2 { inset-inline-start: 29%; inset-block-end: 6%;    inline-size: 20%; block-size: 20%; }
-.slot-3 { inset-inline-end: 8%;    inset-block-start: 17%; inline-size: 19%; block-size: 22%; }
-.slot-4 { inset-inline-end: 12%;   inset-block-end: 9%;    inline-size: 19%; block-size: 19%; }
-.slot-5 { inset-inline-start: 52%; inset-block-end: 5%;    inline-size: 13%; block-size: 16%; }
+.slot-0 { inset-inline-start: 45%; inset-block-start: 27%; inline-size: 22%; block-size: 27%; }
+.slot-1 { inset-inline-start: 5%;  inset-block-start: 58%; inline-size: 19%; block-size: 19%; }
+.slot-2 { inset-inline-start: 28%; inset-block-end: 11%;   inline-size: 20%; block-size: 17%; }
+.slot-3 { inset-inline-start: 52%; inset-block-end: 11%;   inline-size: 17%; block-size: 17%; }
+.slot-4 { inset-inline-end: 8%;    inset-block-start: 17%; inline-size: 17%; block-size: 20%; }
+.slot-5 { inset-inline-end: 4%;    inset-block-start: 42%; inline-size: 12%; block-size: 22%; }
+.slot-6 { inset-inline-end: 9%;    inset-block-end: 11%;   inline-size: 14%; block-size: 22%; }
 
-.float { position: absolute; z-index: 2; pointer-events: none; opacity: 0.85; filter: drop-shadow(0 10px 8px rgb(80 56 48 / 0.12)); }
-.float-radish { inset-inline-end: 26%; inset-block-start: 10%; inline-size: 5.5rem; transform: rotate(-24deg); }
-.float-tomato { inset-inline-start: 4%; inset-block-start: 66%; inline-size: 5.5rem; }
 
 /* ---------- category focus ---------- */
 .focus-inner { padding: 6rem clamp(1.25rem, 5.4%, 4rem) 4rem; max-inline-size: 78rem; margin-inline: auto; }
@@ -128,3 +144,7 @@
   .explore { position: absolute; inset-block-start: var(--space-4); inset-inline-end: var(--space-4); z-index: 8; display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); max-inline-size: 22rem; }
   .explore[hidden] { display: none; }
 }
+
+/* ---------- forms and review (replace the scene while open) ---------- */
+.pane-page { background: var(--color-surface); padding: 5rem clamp(1.25rem, 6%, 4rem) 4rem; }
+.page-inner { max-inline-size: 46rem; margin-inline: auto; display: grid; gap: var(--space-5); align-content: start; }

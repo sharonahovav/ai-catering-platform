@@ -6,14 +6,19 @@
 
 /* The category panel fades in over the zoomed scene. Desktop never hides the scene; phones swap panes (display). */
 .pane { transition: opacity var(--motion-zoom) var(--motion-ease), visibility 0s linear 0s; }
-.stage[data-view="overview"] .pane-category {
+.stage:not([data-view="category"]) .pane-category,
+.stage:not([data-view="page"]) .pane-page,
+.stage[data-view="page"] .pane-overview {
   opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity var(--motion-zoom) var(--motion-ease), visibility 0s linear var(--motion-zoom);
 }
 
+.stage[data-view="category"] .node.is-focused .node-label { opacity: 0; }
+
 /* While zoomed in, the rest of the table recedes so the focused category and its dishes read clearly. */
 .intro, .float, .category-nav { transition: opacity var(--motion-ui); }
-.stage[data-view="category"] .node:not(.is-focused) { opacity: 0.2; }
+.stage[data-view="category"] .node:not(.is-focused) { opacity: 0.14; }
+.stage[data-view="category"] .node:not(.is-focused) .node-label { opacity: 0; }
 .stage[data-view="category"] .intro,
 .stage[data-view="category"] .float,
 .stage[data-view="category"] .category-nav { opacity: 0; pointer-events: none; }
@@ -33,13 +38,17 @@
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* No transitions while the first view is being set up (e.g. a deep link straight into a category). */
-.no-anim, .no-anim * { transition: none !important; animation: none !important; }
+.no-anim, .no-anim * { transition: none !important; } /* animations (the entrance) still play on first load */
 
 /* Added-to-table acknowledgement */
 @keyframes added-flash { from { background: var(--color-sage); } to { background: transparent; } }
 
 @media (prefers-reduced-motion: reduce) {
   .world.is-animated { transition: none; }
+  .node, .node img, .dish-visual img { animation: none; }
+  .is-cam-animated .prop { transition: none; }
+  .stage { transition: none; }
+  .fly-clone { display: none; }
   .sat, .sat-group.is-active .sat { transition: none; }
   .node:hover, .node:focus-visible, .node.is-linked, .dish-card:hover { transform: none; }
   .dish-dialog[open] { animation: none; }
