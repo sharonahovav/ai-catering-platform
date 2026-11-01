@@ -2,7 +2,7 @@
 // Production language is Hebrew/RTL (OPEN_DECISIONS #12): a strings.he.js with the same keys replaces this file.
 // Microcopy is *suggested*, not locked brand language.
 export const t = {
-  brand: "Catering Co.", // replaceable placeholder (OPEN #20)
+  brand: "yumm.ai", // business name from the owner (2026-11-01); logo and typeface still open (#38)
   pageTitle: "Plan your gathering",
   skip: "Skip to main content",
   demoBanner: "Demo data. Dishes, images and quantities are placeholders. No prices, serving advice or dietary information here is real, and your table is not saved.",
