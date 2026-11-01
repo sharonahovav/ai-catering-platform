@@ -347,7 +347,7 @@ Owner answers: Q1 English for Gate 1; Q2 deferred to me (kept: `/table/` beside 
 - Pixel comparison with Prototype v2: only a visual check; see differences below.
 
 ### Differences from Prototype v2 (intentional)
-Text >= 14 px and 44 px targets; real focus management and a native modal `<dialog>`; dish sheet is a history entry; category text list moved to a strip above the hero so nothing overlaps; one-sentence demo banner; Event/Guests/Review shown as "Soon"; the category switcher links to other categories (no fake filters); no blur on the stage; no `confirm()`; English copy trimmed (e.g. "wander, zoom in" claims removed).
+Text >= 14 px and 44 px targets; real focus management and a native modal `<dialog>`; dish sheet is a history entry; category text list moved to a strip above the hero so nothing overlaps; one-sentence demo banner; Event/Guests/Review are real pages since Gate 2 (see 7.3); the category switcher links to other categories (no fake filters); no blur on the stage; no `confirm()`; English copy trimmed (e.g. "wander, zoom in" claims removed).
 
 ### Known gaps for review
 - On phones (< 900 px) switching overview/category is an instant swap, not a zoom (the desktop zoom is a transform transition). Decide if a mobile transition is wanted.
@@ -385,3 +385,42 @@ Owner approved options A and B together (decision logged in `OPEN_DECISIONS.md`)
 **Test stability note:** two intermittent e2e failures were seen across ~20 full runs (one in 'failed save, retry', one in 'deep link then reload'); neither reproduced in isolation or in 40 repeats at 6 workers. The reload test now waits for the app to boot before asserting. Watch for flakes when CI first runs.
 
 **Status:** everything is local and uncommitted on `feature/infinite-table` until the owner is satisfied (nothing pushed, no PR).
+
+### 7.3 Gate 2: quote review, table guide, event and guest forms (2026-11-01)
+
+All mock-only. The rules live in the mock orders service, which returns **codes** (not copy) so the UI owns wording and Hebrew stays a strings change.
+
+**Quote review** (`#/plan/review`): shows dishes, event, guests and "Price: Not available yet". While a draft, it lists exactly what is missing (server-computed `readiness`), each item linking to where to fix it; a blocked "Request a quote" explains instead of sending. Submitting freezes a snapshot and sets `pending_approval`; the page and the summary then say **"Pending business approval"** and "not a confirmed booking". Nothing says approved, booked or confirmed. After sending, dishes and details are read-only (revisions are out of scope, B15) and the guide is switched off. Submit is idempotent per request id; a stale version is refused.
+
+**Table guide** (scripted AI, in the summary panel): proposals are server-made, carry `sourceOrderVersion`, before/after and an *unavailable* price effect, and never touch the order. Only the separate "Approve change" button applies one, in one step, and only if it is pending, unexpired (10 min), for the current version, on a draft, with an available dish. Reject, dismiss, an out-of-date suggestion or an outage leave the order exactly as it was; a second approve does nothing; submitting invalidates any pending proposal. The UI stops offering Approve as soon as a proposal is stale. If suggestions fail, manual ordering is unaffected (`?mockAiFail` to see it).
+
+**Event and guest forms** (`#/plan/event`, `#/plan/guests`): explicit Save (never autosave), partial saves allowed, visible labels and help, errors tied to fields (`aria-invalid`, `aria-describedby`) plus a focusable summary with jump buttons and a text "Problem:" cue. Unsaved input survives navigating away until saved. Delivery reveals an address field. Dietary groups may overlap: each is only compared with the total guests, never summed.
+
+**Placeholders to decide (OPEN_DECISIONS #28):** required fields for a quote, "today or later" for the date, a 10,000-guest sanity bound, 10-minute proposal expiry, and the mock event-type list (taken from PRD examples).
+
+**Verified (automated, Chromium):** 82 unit tests (server rules, validation, submit/snapshot, the full proposal lifecycle incl. stale, expired with a fake clock, replay, overlap, outage) and 132 e2e tests, three consecutive green runs: complete journey to *pending*, blocked incomplete submit, validation and errors, overlap rules, draft preservation, keyboard-only form fill, every proposal path, axe on all new states at desktop and phone, and the overflow/text-size/44px checks on the new pages at 10 viewports. Checked by eye in Chromium screenshots (desktop and phone).
+
+**Real defects found by the work:** dietary "exceeds total" was also flagged when the adult count itself was invalid (fixed); the summary kept the pre-send hint after sending (fixed); my own test waited on a shared live region that could still hold the previous "saved" message (now waits on the form's own status).
+
+**Not verified:** real screen readers, real touch devices, Firefox/Safari, and the GitHub CI job. The interactive Chrome tab used for earlier manual checks stopped producing frames during this session (zero animation frames on every page, including pages that had rendered fine), so screenshots for this slice came from Playwright's headless Chromium instead.
+
+**Known limits:** the order and drafts live in memory (lost on refresh); the guide's suggestion logic is a fixed script ("first available dish not on the table"), not an AI; proposal expiry is only exercised in unit tests; the published artifact still shows the Gate 1/camera version until republished.
+
+### 7.4 A richer menu and a more dramatic table (2026-11-01)
+
+Owner feedback: the table needed to be much more dramatic and dynamic, with more dishes and options (alcohol, entrees split into salads and hors d'oeuvres), and a question about whether the visuals improve later.
+
+**Menu:** seven categories (Salads, Hors d'oeuvres, Main dishes, Sides, Sweets, Soft drinks, Wine & cocktails) and 26 mock dishes, up from 4 and 12. Alcohol is mock-only (OPEN_DECISIONS #11 log entry): a flag on the dish, labels on the card, the sheet and the review page, and the guide never proposes it. Ten new images were generated and cropped to match; extra prototype images were added by what they actually show (the prototype's filenames are unreliable and several files have messy edges, so they were vetted by eye).
+
+**Composition and motion:** seven pre-composed slots; a staggered entrance; a slow ambient drift on each food object (compositor-only, off under reduced motion); two prop layers at different depths that move at different rates when the camera moves (parallax driven by the camera, never the pointer, with a bounded scale so a prop cannot swallow the screen); a distinct backdrop per category that cross-fades; neighbours recede and orbiting dishes stagger in; the dish image flies from the sheet to its row in the summary after Add (cosmetic, removed when it lands, skipped under reduced motion and on phones). The hero is sized from the stage's own width so it never meets a food object at any desktop width.
+
+**Verified (automated, Chromium):** 84 unit tests and 146 e2e tests, three consecutive green runs after the last change. New coverage: seven categories and chips, no overlapping food objects at 4 sizes, layout guards at 7 sizes (strip clear of Explore, hero text clear of objects and props, labels inside the stage, pane stacking), a distinct backdrop per category, parallax at different rates, no pointer-driven movement, staggered entrance, the fly-to-table leaves nothing behind, alcohol labelling on all three surfaces, the guide never proposes alcohol over a full run, phones without depth props, reduced motion. Checked by eye in Playwright screenshots (desktop, wine and salad categories, dish close-up, phone).
+
+**Real defects found along the way:** orbiting dishes were stacked beneath their own food object so a wide object swallowed clicks (fixed); the category strip ran under "Explore freely" (fixed); a depth prop painted over the side panel (fixed with explicit pane stacking); the hero text reached a food object at 900, 1024 and 1920 px (fixed by sizing from the stage); the intro paragraph collapsed to a narrow column on phones (fixed); the node drop-shadow was on a parent of the drifting image, forcing re-rasterisation every frame and making wheel input very slow (moved onto the image). One intermittent test failure under heavy parallel load turned out to be a 5-second assertion patience limit, not an app bug (default wait raised to 10 s).
+
+**Not verified:** real devices and GPUs (performance was measured only in headless software rendering; the drift and parallax use compositor-friendly properties, but weak phones and old tablets are untested), Firefox/Safari (`@property` backdrop cross-fades degrade to an instant change where unsupported), screen readers, and the GitHub CI job.
+
+**Honest limits:** the new pictures are generated placeholders and look like it in places (clipped bowl rims on some prototype cutouts, a plastic sheen on some drinks); production quality needs real photography. Two images (`pierced_orange` ring, `pearl_tin`) are decorative curiosities. Assets are now about 8 MB.
+
+**Will the visuals improve later?** Yes, in three separate ways: composition and motion (done here, tunable now); the pictures themselves (real photography once the menu exists, Gate 3); and brand identity (#20-#23), which restyles everything through the tokens.
+
